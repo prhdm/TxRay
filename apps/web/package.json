@@ -1,5 +1,5 @@
 {
-  "name": "web",
+  "name": "@txray/web",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -11,14 +11,19 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@repo/ui": "workspace:*",
+    "@rainbow-me/rainbowkit": "^2.2.8",
+    "@supabase/supabase-js": "^2.38.0",
+    "@tanstack/react-query": "^5.86.0",
+    "@txray/ui": "workspace:*",
     "next": "^15.5.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "viem": "^2.37.3",
+    "wagmi": "^2.16.9"
   },
   "devDependencies": {
-    "@repo/eslint-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
+    "@txray/eslint-config": "workspace:*",
+    "@txray/typescript-config": "workspace:*",
     "@types/node": "^22.15.3",
     "@types/react": "19.1.0",
     "@types/react-dom": "19.1.1",
