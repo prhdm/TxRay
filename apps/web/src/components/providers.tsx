@@ -5,17 +5,26 @@ import { WagmiProvider } from 'wagmi';
 import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { config } from '../lib/rainbowkit';
 import '@rainbow-me/rainbowkit/styles.css';
-
-const queryClient = new QueryClient();
+import { useState } from 'react';
+import { AuthProvider } from '../../app/contexts/AuthContext';
+import { ThemeProvider, NotificationProvider } from '@txray/ui';
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient());
+
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider>
-          {children}
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <NotificationProvider>
+      <ThemeProvider defaultTheme="light" storageKey="txray-theme">
+        <WagmiProvider config={config}>
+          <QueryClientProvider client={queryClient}>
+            <RainbowKitProvider>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+            </RainbowKitProvider>
+          </QueryClientProvider>
+        </WagmiProvider>
+      </ThemeProvider>
+    </NotificationProvider>
   );
 }

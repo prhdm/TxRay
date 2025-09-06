@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-export type NavigationPage = 'inventory' | 'analytics';
+export type NavigationPage = 'home' | 'inventory' | 'analytics' | 'profile';
 
 interface NavigationContextType {
   currentPage: NavigationPage;
@@ -24,7 +24,7 @@ interface NavigationProviderProps {
 }
 
 export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children }) => {
-  const [currentPage, setCurrentPage] = useState<NavigationPage>('inventory');
+  const [currentPage, setCurrentPage] = useState<NavigationPage>('home');
 
   return (
     <NavigationContext.Provider value={{ currentPage, setCurrentPage }}>

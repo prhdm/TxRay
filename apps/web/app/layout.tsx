@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Providers } from "../src/components/providers";
+import { NotificationContainer } from "@txray/ui";
 
 const spaceGrotesk = Space_Grotesk({ 
   subsets: ["latin"],
@@ -24,6 +25,7 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <NotificationContainer />
       </body>
     </html>
   );

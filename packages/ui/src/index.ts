@@ -59,4 +59,15 @@ export type { CollectionHeaderProps } from "./collection-header"
 export { Footer } from "./footer"
 export type { FooterProps } from "./footer"
 
+export { ProfileDropdown } from "./profile-dropdown"
+export type { ProfileDropdownProps } from "./profile-dropdown"
+
+export { ThemeProvider, useTheme } from "./theme-provider"
+export { ThemeToggle } from "./theme-toggle"
+
+export { NotificationProvider, useNotification } from "./notification-provider"
+export type { Notification, NotificationType } from "./notification-provider"
+export { Notification as NotificationItem } from "./notification"
+export { NotificationContainer } from "./notification-container"
+
 export { cn } from "./lib/utils"

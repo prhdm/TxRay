@@ -1,0 +1,406 @@
+import { SiweMessage } from 'siwe';
+import { useSignMessage, useAccount } from 'wagmi';
+
+// Types
+export interface AuthResult {
+  success: boolean;
+  error?: string;
+  user?: {
+    id: string;
+    wallet_address: string;
+    role?: string;
+  };
+}
+
+export interface AuthUser {
+  id: string;
+  wallet_address: string;
+  role?: string;
+}
+
+// Constants
+const TAIKO_HEKLA_CHAIN_ID = 167009;
+const ACCESS_TOKEN_EXPIRY_BUFFER = 90; // Refresh 90 seconds before expiry
+
+// Global auth state
+let accessToken: string | null = null;
+let tokenExpiry: number | null = null;
+let refreshPromise: Promise<string> | null = null;
+let csrfToken: string | null = null;
+
+/**
+ * Get Supabase function URL
+ */
+const getSupabaseUrl = () => {
+  // Use the deployed Supabase edge functions
+  return 'https://kwhmqawvfkbnwmpzwnru.supabase.co';
+};
+
+/**
+ * Get CSRF token from server
+ */
+export const getCsrfToken = async (): Promise<string> => {
+  if (csrfToken) return csrfToken;
+
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!anonKey) throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY not configured');
+
+  const response = await fetch(`${getSupabaseUrl()}/functions/v1/auth/csrf`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      'Authorization': `Bearer ${anonKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to get CSRF token');
+  }
+
+  const data = await response.json();
+  csrfToken = data.csrf;
+  return csrfToken!;
+};
+
+/**
+ * Get request headers with CSRF token
+ */
+const getHeaders = async (): Promise<Record<string, string>> => {
+  const token = await getCsrfToken();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!anonKey) throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY not configured');
+
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${anonKey}`,
+    'X-CSRF-Token': token,
+  };
+};
+
+/**
+ * Get nonce from server
+ */
+export const getNonce = async (address: string): Promise<string> => {
+  const response = await fetch(`${getSupabaseUrl()}/functions/v1/auth/nonce`, {
+    method: 'POST',
+    headers: await getHeaders(),
+    credentials: 'include',
+    body: JSON.stringify({ address }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to get nonce');
+  }
+
+  const data = await response.json();
+  return data.nonce;
+};
+
+/**
+ * Create SIWE message
+ */
+export const createSiweMessage = async (
+  address: string,
+  nonce: string
+): Promise<SiweMessage> => {
+  const message = new SiweMessage({
+    domain: window.location.hostname,
+    address,
+    statement: 'Sign in with Ethereum to TxRay',
+    uri: window.location.origin,
+    version: '1',
+    chainId: TAIKO_HEKLA_CHAIN_ID,
+    nonce,
+    expirationTime: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
+  });
+
+  return message;
+};
+
+/**
+ * Authenticate with SIWE
+ */
+export const authenticateWithSIWE = async (
+  address: string,
+  signature: string,
+  message: string
+): Promise<AuthResult> => {
+  try {
+    const response = await fetch(`${getSupabaseUrl()}/functions/v1/auth/siwe-verify`, {
+      method: 'POST',
+      headers: await getHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ address, message, signature }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.error || 'Authentication failed',
+      };
+    }
+
+    // Store access token
+    accessToken = data.access_token;
+    tokenExpiry = Date.now() + (15 * 60 * 1000); // 15 minutes
+
+    return {
+      success: true,
+      user: data.user,
+    };
+  } catch (error) {
+    console.error('SIWE authentication error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Authentication failed',
+    };
+  }
+};
+
+/**
+ * Refresh access token
+ */
+export const refreshAccessToken = async (): Promise<string | null> => {
+  // Prevent multiple concurrent refresh requests
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const response = await fetch(`${getSupabaseUrl()}/functions/v1/auth/refresh`, {
+        method: 'POST',
+        headers: await getHeaders(),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Refresh failed');
+      }
+
+      accessToken = data.access_token;
+      tokenExpiry = Date.now() + (15 * 60 * 1000); // 15 minutes
+
+      return accessToken || '';
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      // Clear tokens on refresh failure
+      accessToken = null;
+      tokenExpiry = null;
+      throw error;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+};
+
+/**
+ * Get current access token (refreshes if needed)
+ */
+export const getAccessToken = async (): Promise<string | null> => {
+  if (!accessToken) return null;
+
+  // Check if token is close to expiry
+  if (tokenExpiry && Date.now() > (tokenExpiry - ACCESS_TOKEN_EXPIRY_BUFFER * 1000)) {
+    try {
+      await refreshAccessToken();
+    } catch (error) {
+      console.error('Failed to refresh token:', error);
+      return null;
+    }
+  }
+
+  return accessToken;
+};
+
+/**
+ * Logout
+ */
+export const logout = async (): Promise<void> => {
+  try {
+    await fetch(`${getSupabaseUrl()}/functions/v1/auth/logout`, {
+      method: 'POST',
+      headers: await getHeaders(),
+      credentials: 'include',
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+  } finally {
+    accessToken = null;
+    tokenExpiry = null;
+    csrfToken = null;
+  }
+};
+
+/**
+ * Check if user is authenticated
+ */
+export const isAuthenticated = (): boolean => {
+  return !!accessToken && !!tokenExpiry && Date.now() < tokenExpiry;
+};
+
+/**
+ * Check if we have valid tokens for silent reconnection
+ */
+export const hasValidTokens = async (): Promise<boolean> => {
+  try {
+    // Check if we have a refresh token cookie
+    const cookies = document.cookie.split(';');
+    const refreshTokenCookie = cookies.find(cookie => cookie.trim().startsWith('__Host-rt='));
+
+    if (!refreshTokenCookie) {
+      return false;
+    }
+
+    // Try to refresh the token to see if it's still valid
+    const response = await fetch(`${getSupabaseUrl()}/functions/v1/auth/refresh`, {
+      method: 'POST',
+      headers: await getHeaders(),
+      credentials: 'include',
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      accessToken = data.access_token;
+      tokenExpiry = Date.now() + (15 * 60 * 1000);
+      return true;
+    }
+  } catch (error) {
+    console.error('Token validation failed:', error);
+  }
+  return false;
+};
+
+/**
+ * Silent reconnection - reconnect wallet without SIWE if tokens are valid
+ */
+export const silentReconnect = async (address: string): Promise<AuthResult> => {
+  try {
+    const hasValidTokensResult = await hasValidTokens();
+
+    if (hasValidTokensResult && accessToken) {
+      // We have valid tokens, just return success without SIWE
+      // The user will still need to connect their wallet, but no signing required
+      return {
+        success: true,
+        user: {
+          id: 'reconnected', // We'll get the actual user data from the context
+          wallet_address: address,
+        },
+      };
+    }
+
+    // No valid tokens, return failure so full SIWE flow can proceed
+    return {
+      success: false,
+      error: 'No valid tokens found, full authentication required',
+    };
+  } catch (error) {
+    console.error('Silent reconnection failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Silent reconnection failed',
+    };
+  }
+};
+
+/**
+ * Bootstrap auth on app start
+ */
+export const bootstrapAuth = async (): Promise<AuthUser | null> => {
+  try {
+    // First get CSRF token
+    await getCsrfToken();
+
+    const response = await fetch(`${getSupabaseUrl()}/functions/v1/auth/refresh`, {
+      method: 'POST',
+      headers: await getHeaders(),
+      credentials: 'include',
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      accessToken = data.access_token;
+      tokenExpiry = Date.now() + (15 * 60 * 1000);
+      return data.user;
+    }
+  } catch (error) {
+    console.error('Auth bootstrap failed:', error);
+  }
+  return null;
+};
+
+/**
+ * Hook for wallet-based authentication
+ */
+export const useWalletAuth = () => {
+  const { signMessageAsync } = useSignMessage();
+  const { chainId } = useAccount();
+
+  const authenticate = async (address: string): Promise<AuthResult> => {
+    try {
+      if (!signMessageAsync) {
+        return {
+          success: false,
+          error: 'Wallet not connected or sign message not available',
+        };
+      }
+
+      if (chainId !== TAIKO_HEKLA_CHAIN_ID) {
+        return {
+          success: false,
+          error: 'Please switch to Taiko Hekla network',
+        };
+      }
+
+      // Get nonce
+      const nonce = await getNonce(address);
+
+      // Create and sign SIWE message
+      const siweMessage = await createSiweMessage(address, nonce);
+      const messageToSign = siweMessage.prepareMessage();
+
+      const signature = await signMessageAsync({
+        message: messageToSign,
+      });
+
+      // Authenticate
+      return await authenticateWithSIWE(address, signature, messageToSign);
+    } catch (error) {
+      console.error('Wallet authentication error:', error);
+
+      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      const isUserCancellation =
+        errorMessage.includes('User rejected') ||
+        errorMessage.includes('User denied') ||
+        errorMessage.includes('User cancelled') ||
+        errorMessage.includes('User canceled') ||
+        errorMessage.includes('rejected') ||
+        errorMessage.includes('denied') ||
+        errorMessage.includes('cancelled') ||
+        errorMessage.includes('canceled') ||
+        errorMessage.includes('4001') ||
+        errorMessage.includes('ACTION_REJECTED');
+
+      return {
+        success: false,
+        error: isUserCancellation ? 'User cancelled authentication' : errorMessage,
+      };
+    }
+  };
+
+  return {
+    authenticate,
+    silentReconnect,
+    logout,
+    isAuthenticated,
+    getAccessToken,
+  };
+};

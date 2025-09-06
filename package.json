@@ -5,7 +5,6 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "dev:web": "turbo run dev --filter=@txray/web",
-    "dev:api": "turbo run dev --filter=@txray/api",
     "dev:ui": "turbo run dev --filter=@txray/ui",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
@@ -20,11 +19,17 @@
   },
   "devDependencies": {
     "prettier": "^3.6.2",
+    "supabase": "^2.39.2",
     "turbo": "^2.5.6",
     "typescript": "5.9.2"
   },
   "packageManager": "pnpm@9.0.0",
   "engines": {
     "node": ">=18"
+  },
+  "pnpm": {
+    "overrides": {
+      "cuer": "0.0.3"
+    }
   }
 }

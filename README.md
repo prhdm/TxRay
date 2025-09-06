@@ -1,135 +1,199 @@
-# Turborepo starter
+# TxRay
 
-This Turborepo starter is maintained by the Turborepo core team.
+A modern full-stack application built with Next.js, Express.js, and Supabase, organized as a Turborepo monorepo.
 
-## Using this example
+## 🏗️ Architecture
 
-Run the following command:
+- **Frontend**: Next.js 15 with React 19
+- **Backend**: Express.js API with TypeScript
+- **Database**: Supabase (PostgreSQL + Auth + Real-time)
+- **Hosting**: Vercel (Frontend + Backend)
+- **Package Manager**: pnpm
+- **Monorepo**: Turborepo
 
-```sh
-npx create-turbo@latest
-```
-
-## What's inside?
-
-This Turborepo includes the following packages/apps:
-
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
+## 📁 Project Structure
 
 ```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+TxRay/
+├── apps/
+│   ├── web/          # Next.js frontend
+│   └── api/          # Express.js backend
+├── packages/
+│   ├── ui/           # Shared UI components
+│   ├── eslint-config/ # Shared ESLint config
+│   └── typescript-config/ # Shared TypeScript config
+├── docker/            # Docker configurations
+│   ├── Dockerfile.*   # Multi-stage builds
+│   ├── docker-compose*.yml # Service orchestration
+│   └── env.docker.example # Environment template
+├── scripts/           # Build and utility scripts
+├── .github/           # GitHub Actions workflows
+├── turbo.json         # Turborepo configuration
+└── pnpm-workspace.yaml
 ```
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+## 🔗 Deployed Services
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
+### Supabase Edge Functions
+- **Analytics**: `https://kwhmqawvfkbnwmpzwnru.supabase.co/functions/v1/analytics`
+- **Indexer**: `https://kwhmqawvfkbnwmpzwnru.supabase.co/functions/v1/indexer`
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
+The application is configured to use these deployed edge functions for production use.
 
-### Develop
+## 🚀 Getting Started
 
-To develop all apps and packages, run the following command:
+### Prerequisites
 
-```
-cd my-turborepo
+- Node.js 18+
+- pnpm 9+
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
+### Installation
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd TxRay
 
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+# Install dependencies
+pnpm install
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+# Set up environment variables
+cp apps/web/env.example apps/web/.env.local
+cp apps/api/env.example apps/api/.env
 ```
 
-### Remote Caching
+### Development
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+```bash
+# Start all applications
+pnpm dev
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+# Start only frontend
+pnpm dev:web
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+# Start only backend
+pnpm dev:api
 
-```
-cd my-turborepo
+# Build all applications
+pnpm build
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
+# Lint code
+pnpm lint
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
+# Type check
+pnpm check-types
 ```
 
-## Useful Links
+## 🌐 Development URLs
 
-Learn more about the power of Turborepo:
+- **Frontend**: http://localhost:3000
+- **Backend**: Supabase Edge Functions (serverless)
+- **API**: No separate API needed - fully frontend-only
 
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+## 🔧 Environment Variables
+
+### Frontend (apps/web/.env.local)
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+# API URL no longer needed - using Supabase Edge Functions
+```
+
+### Supabase Edge Functions (Environment Variables set in Supabase Dashboard)
+```bash
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+SUPABASE_JWT_SECRET=your_jwt_secret
+APP_ORIGIN=http://localhost:3000
+```
+
+## 🚀 Deployment
+
+### Vercel Deployment
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed instructions on deploying to Vercel and Supabase.
+
+### Docker Deployment
+```bash
+# Build all Docker images
+./scripts/docker-build.sh
+
+# Run with Docker Compose
+docker-compose -f docker/docker-compose.yml up
+
+# Run development environment
+docker-compose -f docker/docker-compose.dev.yml up
+
+# Build with custom tag
+./scripts/docker-build.sh -t v1.0.0
+
+# Build and push to registry
+./scripts/docker-build.sh -t v1.0.0 -p
+```
+
+### GitHub Actions
+- **Production Deployment**: Push tag `v0.0.1-production` to trigger Vercel deployment
+- **Docker Builds**: Push tag `v0.0.1-docker` to build and push Docker images
+
+### Quick Tagging
+```bash
+# Deploy to production
+pnpm tag:prod -v 0.0.1 -p
+
+# Build Docker images
+pnpm tag:docker -v 0.0.1 -p
+
+# Or use the script directly
+./scripts/tag-and-deploy.sh -v 0.0.1 -t production -p
+./scripts/tag-and-deploy.sh -v 0.0.1 -t docker -p
+```
+
+## 📚 Available Scripts
+
+- `pnpm build` - Build all applications
+- `pnpm dev` - Start all applications in development mode
+- `pnpm dev:web` - Start only the frontend
+- `pnpm dev:api` - Start only the backend
+- `pnpm lint` - Lint all applications
+- `pnpm check-types` - Type check all applications
+- `pnpm format` - Format code with Prettier
+- `pnpm tag:prod` - Create production deployment tag
+- `pnpm tag:docker` - Create Docker build tag
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **Framework**: Next.js 15
+- **Language**: TypeScript
+- **Styling**: CSS Modules
+- **UI Components**: Custom component library
+
+### Backend
+- **Framework**: Express.js
+- **Language**: TypeScript
+- **Security**: Helmet, CORS
+- **Database**: Supabase
+
+### Infrastructure
+- **Hosting**: Vercel
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth
+- **Real-time**: Supabase Realtime
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linting
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🆘 Support
+
+- Check the [deployment guide](./DEPLOYMENT.md)
+- Review [Turborepo docs](https://turbo.build/repo/docs)
+- Check [Next.js docs](https://nextjs.org/docs)
+- Review [Supabase docs](https://supabase.com/docs)
