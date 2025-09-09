@@ -1,7 +1,7 @@
 import { Address } from 'viem';
 
 // Contract address
-export const CONTRACT_ADDRESS = '0x0D99E3e638844020056C7659Dbe657C4C67276af' as Address;
+export const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS! as Address;
 
 // Contract ABI - Full ABI for IntraverseProtocolDirect contract
 export const CONTRACT_ABI = [

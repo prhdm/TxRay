@@ -5,7 +5,7 @@ export class ApiClient {
   private baseUrl: string;
 
   constructor(baseUrl: string = '') {
-    this.baseUrl = baseUrl || 'https://kwhmqawvfkbnwmpzwnru.supabase.co';
+    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_SUPABASE_URL!;
   }
 
   private async getHeaders(): Promise<Record<string, string>> {

@@ -117,7 +117,8 @@ export function TransactionTable({
   }
 
   const getExplorerUrl = (hash: string) => {
-    return `https://hekla.taikoscan.io/tx/${hash}`
+    const explorerUrl = process.env.NEXT_PUBLIC_EXPLORER_URL!
+    return `${explorerUrl}/tx/${hash}`
   }
 
   if (transactions.length === 0) {

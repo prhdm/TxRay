@@ -33,7 +33,7 @@ let csrfToken: string | null = null;
  */
 const getSupabaseUrl = () => {
   // Use the deployed Supabase edge functions
-  return 'https://kwhmqawvfkbnwmpzwnru.supabase.co';
+  return process.env.NEXT_PUBLIC_SUPABASE_URL!;
 };
 
 /**

@@ -45,7 +45,7 @@ export interface HealthInfo {
 export type TimeseriesGranularity = 'minute' | 'hour' | 'day' | 'week'
 
 class AnalyticsApiClient {
-  private baseUrl = 'https://kwhmqawvfkbnwmpzwnru.supabase.co/functions/v1/indexer'
+  private baseUrl = process.env.NEXT_PUBLIC_ANALYTICS_API_URL!
 
   // Debug method to test basic connectivity
   async testConnection(): Promise<{status: number, ok: boolean, response?: any}> {

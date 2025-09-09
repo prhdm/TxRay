@@ -2,7 +2,7 @@ import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import type { Config } from 'wagmi';
 
 export const taikoHekla = {
-  id: 167009,
+  id: parseInt(process.env.NEXT_PUBLIC_CHAIN_ID!),
   name: 'Taiko Hekla',
   network: 'taiko-hekla',
   nativeCurrency: {
@@ -11,18 +11,18 @@ export const taikoHekla = {
     symbol: 'ETH',
   },
   rpcUrls: {
-    public: { http: ['https://rpc.hekla.taiko.xyz'] },
-    default: { http: ['https://rpc.hekla.taiko.xyz'] },
+    public: { http: [process.env.NEXT_PUBLIC_RPC_URL!] },
+    default: { http: [process.env.NEXT_PUBLIC_RPC_URL!] },
   },
   blockExplorers: {
-    default: { name: 'Taiko Hekla Explorer', url: 'https://hekla.taikoscan.io' },
+    default: { name: 'Taiko Hekla Explorer', url: process.env.NEXT_PUBLIC_EXPLORER_URL! },
   },
   testnet: true,
 } as const;
 
 export const config: Config = getDefaultConfig({
   appName: 'TxRay',
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'ca48ea50367099fab3ea554817737035', // TODO: MOVE THIS TO .ENV
+  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
   chains: [
     taikoHekla,
   ],
