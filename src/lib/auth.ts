@@ -19,7 +19,7 @@ export interface AuthUser {
 }
 
 // Constants
-const TAIKO_HEKLA_CHAIN_ID = 167009;
+const TAIKO_HEKLA_CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID!);
 const ACCESS_TOKEN_EXPIRY_BUFFER = 90; // Refresh 90 seconds before expiry
 
 // Global auth state
