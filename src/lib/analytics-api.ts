@@ -1,7 +1,7 @@
 // Analytics API client for the indexer endpoints
 // Base URL: https://kwhmqawvfkbnwmpzwnru.supabase.co/functions/v1/indexer
 
-import { getAccessToken } from './auth'
+import { getAccessToken } from './auth';
 
 export interface IndexerSummary {
   total_transactions: number
