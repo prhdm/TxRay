@@ -3,147 +3,62 @@
 import { 
   CollectionHeader,
   RarityCard,
-  useNotification
+  MintStatsCard
 } from "@/ui";
 import { useMint } from "@/hooks/useMint";
-import { useAuth } from "@/lib/AuthContext";
+import { useAuth } from "@/features/auth/lib/AuthContext";
 import { useRarityBalances } from "@/hooks/useRarityBalances";
 import { useUpgrade } from "@/hooks/useUpgrade";
-import { useEffect, useRef } from "react";
+import { useMintStats } from "@/hooks/useMintStats";
+import React, { useMemo, useCallback } from "react";
 
 export default function InventoryPage() {
   const { isAuthenticated, user } = useAuth();
   const { mint, isLoading, error, isSuccess, hash } = useMint();
-  const { addNotification } = useNotification();
   const { rarities, isLoading: raritiesLoading, refetch: refetchRarities } = useRarityBalances();
   const { upgrade, isLoading: upgradeLoading, error: upgradeError, isSuccess: upgradeSuccess, hash: upgradeHash } = useUpgrade();
+  const { totalMinted, totalSupply, totalBurned, availableToMint, userMintCount, userCanMint, isLoading: mintStatsLoading } = useMintStats();
 
-  // Refs to track previous states and avoid infinite loops
-  const prevMintStateRef = useRef({ isLoading: false, isSuccess: false, error: null as string | null, hash: undefined as `0x${string}` | undefined });
-  const prevUpgradeStateRef = useRef({ isLoading: false, isSuccess: false, error: null as string | null, hash: undefined as `0x${string}` | undefined });
-  const addNotificationRef = useRef(addNotification);
-  const refetchRaritiesRef = useRef(refetchRarities);
+  // No notification handling - let the hooks handle cancellation internally
 
-  // Update refs when dependencies change
-  useEffect(() => {
-    addNotificationRef.current = addNotification;
-  }, [addNotification]);
+  // Create all 13 rarity cards (show all even when not authenticated)
+  const allRarityCards = useMemo(() => {
+    return Array.from({ length: 13 }, (_, index) => {
+      const level = index + 1;
+      const rarityData = rarities.find(r => r.level === level);
+      
+      return {
+        id: level,
+        rarity: `Rarity ${level}`,
+        cardCount: rarityData ? Number(rarityData.balance ?? BigInt(0)) : 0,
+        variant: (["default", "primary", "dark"] as const)[index % 3],
+        canUpgrade: isAuthenticated && rarityData ? rarityData.canUpgrade : false,
+        isSpecial: level === 13, // Mark rarity 13 as special
+      };
+    });
+  }, [rarities, isAuthenticated]);
 
-  useEffect(() => {
-    refetchRaritiesRef.current = refetchRarities;
-  }, [refetchRarities]);
+  // Separate normal and special cards
+  const normalCards = useMemo(() => allRarityCards.filter(card => !card.isSpecial), [allRarityCards]);
+  const specialCards = useMemo(() => allRarityCards.filter(card => card.isSpecial), [allRarityCards]);
 
-  // Single useEffect to handle all notifications and state changes
-  useEffect(() => {
-    const prevMint = prevMintStateRef.current;
-    const prevUpgrade = prevUpgradeStateRef.current;
-
-    // Handle mint notifications
-    if (isLoading !== prevMint.isLoading || isSuccess !== prevMint.isSuccess || error !== prevMint.error || hash !== prevMint.hash) {
-      // Mint started
-      if (isLoading && !prevMint.isLoading) {
-        addNotificationRef.current({
-          type: "info",
-          title: "Minting in progress...",
-          message: "Please wait while your transaction is being processed.",
-          duration: 0, // Don't auto-dismiss while loading
-        });
-      }
-
-      // Mint successful
-      if (isSuccess && !prevMint.isSuccess && !isLoading) {
-        addNotificationRef.current({
-          type: "success",
-          title: "Minting successful!",
-          message: hash ? `Transaction hash: ${hash.slice(0, 10)}...${hash.slice(-8)}` : "Your NFT has been minted successfully.",
-        });
-        // Refetch rarities to update balances
-        setTimeout(() => refetchRaritiesRef.current(), 2000);
-      }
-
-      // Mint error
-      if (error && error !== prevMint.error && !isLoading) {
-        addNotificationRef.current({
-          type: "error",
-          title: "Mint failed",
-          message: error,
-        });
-      }
-    }
-
-    // Handle upgrade notifications
-    if (upgradeLoading !== prevUpgrade.isLoading || upgradeSuccess !== prevUpgrade.isSuccess || upgradeError !== prevUpgrade.error || upgradeHash !== prevUpgrade.hash) {
-      // Upgrade started
-      if (upgradeLoading && !prevUpgrade.isLoading) {
-        addNotificationRef.current({
-          type: "info",
-          title: "Upgrading in progress...",
-          message: "Please wait while your tokens are being upgraded.",
-          duration: 0, // Don't auto-dismiss while loading
-        });
-      }
-
-      // Upgrade successful
-      if (upgradeSuccess && !prevUpgrade.isSuccess && !upgradeLoading) {
-        addNotificationRef.current({
-          type: "success",
-          title: "Upgrade successful!",
-          message: upgradeHash ? `Transaction hash: ${upgradeHash.slice(0, 10)}...${upgradeHash.slice(-8)}` : "Your tokens have been upgraded successfully.",
-        });
-        // Refetch rarities to update balances
-        setTimeout(() => refetchRaritiesRef.current(), 2000);
-      }
-
-      // Upgrade error
-      if (upgradeError && upgradeError !== prevUpgrade.error && !upgradeLoading) {
-        addNotificationRef.current({
-          type: "error",
-          title: "Upgrade failed",
-          message: upgradeError,
-        });
-      }
-    }
-
-    // Update refs with current state
-    prevMintStateRef.current = { isLoading, isSuccess, error, hash };
-    prevUpgradeStateRef.current = { isLoading: upgradeLoading, isSuccess: upgradeSuccess, error: upgradeError, hash: upgradeHash };
-  }, [isLoading, isSuccess, error, hash, upgradeLoading, upgradeSuccess, upgradeError, upgradeHash]);
-
-  // Transform rarity data from contract into card format
-  const rarityData = rarities.map((rarity, index) => ({
-    id: rarity.tokenId,
-    rarity: `Rarity ${rarity.level}`,
-    rarityLevel: `x${rarity.level}.000`,
-    cardCount: Number(rarity.balance ?? BigInt(0)),
-    variant: (["default", "primary", "dark"] as const)[index % 3],
-    canUpgrade: rarity.canUpgrade,
-  }));
-
-  const handleUpgrade = async (tokenId: number) => {
+  const handleUpgrade = useCallback(async (tokenId: number) => {
     try {
       console.log(`Upgrading Rarity ${tokenId} to Rarity ${tokenId + 1}`);
       const result = await upgrade(tokenId, tokenId + 1);
 
       if (!result.success) {
         console.error("Upgrade failed:", result.error);
-        addNotification({
-          type: "error",
-          title: "Upgrade failed",
-          message: result.error || "Failed to initiate upgrade transaction",
-        });
+        // Error notifications are handled by useEffect hooks
       }
       // Success notifications are handled by useEffect hooks
     } catch (error) {
       console.error("Upgrade error:", error);
-      addNotification({
-        type: "error",
-        title: "Upgrade failed",
-        message: "An unexpected error occurred during upgrade",
-      });
+      // Error notifications are handled by useEffect hooks
     }
-  };
+  }, [upgrade]);
 
-  const handleMint = async () => {
+  const handleMint = useCallback(async () => {
     if (!isAuthenticated) {
       console.error("User must be authenticated to mint");
       return;
@@ -155,25 +70,17 @@ export default function InventoryPage() {
 
       if (!result.success) {
         console.error("Mint failed:", result.error);
-        addNotification({
-          type: "error",
-          title: "Mint failed",
-          message: result.error || "Failed to initiate mint transaction",
-        });
+        // Error notifications are handled by useEffect hooks
       }
       // Success notifications are handled by useEffect hooks
     } catch (error) {
       console.error("Mint error:", error);
-      addNotification({
-        type: "error",
-        title: "Mint failed",
-        message: "An unexpected error occurred during minting",
-      });
+      // Error notifications are handled by useEffect hooks
     }
-  };
+  }, [isAuthenticated, mint]);
 
   return (
-    <main className="w-full max-w-4xl mx-auto px-6 py-8">
+    <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {/* Collection Header */}
       <CollectionHeader
         title="Drift Pass"
@@ -183,37 +90,91 @@ export default function InventoryPage() {
         isDisabled={!isAuthenticated}
       />
 
-      {/* Rarity Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {raritiesLoading ? (
+      {/* Mint Statistics Card */}
+      <div className="mb-6 sm:mb-8">
+        <MintStatsCard
+          totalMinted={totalMinted}
+          totalSupply={totalSupply}
+          totalBurned={totalBurned}
+          availableToMint={availableToMint}
+          userMintCount={userMintCount}
+          userCanMint={userCanMint}
+          isLoading={mintStatsLoading}
+          isAuthenticated={isAuthenticated}
+        />
+      </div>
+
+      {/* Rarity Cards */}
+      <div className="space-y-6 sm:space-y-8">
+        {raritiesLoading && isAuthenticated ? (
           // Loading skeleton for rarity cards
-          Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="rounded-[45px] border border-gray-200 p-6 shadow-lg animate-pulse">
-              <div className="flex justify-between items-center gap-8">
-                <div className="flex-1 space-y-4">
-                  <div className="h-6 bg-gray-200 rounded-xl w-24"></div>
-                  <div className="h-8 bg-gray-200 rounded-xl w-20"></div>
-                  <div className="h-6 bg-gray-200 rounded w-32"></div>
-                  <div className="h-10 bg-gray-200 rounded-lg w-24"></div>
+          <div className="space-y-6 sm:space-y-8">
+            {/* Normal cards grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="rounded-3xl sm:rounded-[45px] border border-gray-200 p-4 sm:p-6 lg:p-8 shadow-lg animate-pulse min-h-[300px] sm:min-h-[350px] lg:min-h-[400px]">
+                  <div className="flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6 lg:gap-8 h-full">
+                    <div className="flex flex-col gap-4 sm:gap-6 w-full md:flex-1">
+                      <div className="h-8 sm:h-10 bg-gray-200 rounded-lg w-32 sm:w-36"></div>
+                      <div className="h-8 sm:h-10 bg-gray-200 rounded-lg w-36 sm:w-40"></div>
+                      <div className="h-8 sm:h-10 bg-gray-200 rounded-lg w-40 sm:w-44"></div>
+                      <div className="h-12 sm:h-14 bg-gray-200 rounded-xl w-full max-w-[200px]"></div>
+                    </div>
+                    <div className="w-full md:max-w-[300px] lg:max-w-[350px] h-[200px] sm:h-[250px] md:h-[280px] lg:h-[320px] bg-gray-200 rounded-2xl flex-shrink-0"></div>
+                  </div>
                 </div>
-                <div className="w-24 h-24 bg-gray-200 rounded-2xl"></div>
+              ))}
+            </div>
+            
+            {/* Special card skeleton */}
+            <div className="rounded-3xl sm:rounded-[45px] border border-gray-200 p-6 sm:p-8 lg:p-12 shadow-lg animate-pulse min-h-[400px] sm:min-h-[500px] lg:min-h-[600px]">
+              <div className="flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-8 lg:gap-10 h-full">
+                <div className="flex flex-col gap-6 sm:gap-8 lg:gap-10 w-full md:flex-1">
+                  <div className="h-12 sm:h-16 lg:h-20 bg-gray-200 rounded-lg w-40 sm:w-48"></div>
+                  <div className="h-12 sm:h-16 lg:h-20 bg-gray-200 rounded-lg w-48 sm:w-56"></div>
+                  <div className="h-16 sm:h-20 lg:h-24 bg-gray-200 rounded-xl w-full max-w-[300px]"></div>
+                </div>
+                <div className="w-full md:max-w-[400px] lg:max-w-[500px] xl:max-w-[600px] h-[300px] sm:h-[400px] md:h-[450px] lg:h-[500px] xl:h-[550px] bg-gray-200 rounded-2xl flex-shrink-0"></div>
               </div>
             </div>
-          ))
+          </div>
         ) : (
-          rarityData.map((rarity) => (
-            <RarityCard
-              key={rarity.id}
-              rarity={rarity.rarity}
-              rarityLevel={rarity.rarityLevel}
-              cardCount={rarity.cardCount}
-              variant={rarity.variant}
-              canUpgrade={rarity.canUpgrade}
-              tokenId={rarity.id}
-              onUpgrade={() => handleUpgrade(rarity.id)}
-              className="w-full"
-            />
-          ))
+          <>
+            {/* Normal Cards Grid */}
+            {normalCards.length > 0 && (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+                {normalCards.map((rarity) => (
+                  <RarityCard
+                    key={rarity.id}
+                    rarity={rarity.rarity}
+                    cardCount={rarity.cardCount}
+                    variant={rarity.variant}
+                    canUpgrade={rarity.canUpgrade}
+                    tokenId={rarity.id}
+                    isAuthenticated={isAuthenticated}
+                    onUpgrade={isAuthenticated ? () => handleUpgrade(rarity.id) : undefined}
+                    className="w-full"
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Special Cards (Full Width) */}
+            {specialCards.map((rarity) => (
+              <div key={rarity.id} className="w-full">
+                <RarityCard
+                  rarity={rarity.rarity}
+                  cardCount={rarity.cardCount}
+                  variant={rarity.variant}
+                  canUpgrade={false} // Rarity 13 cannot be upgraded
+                  tokenId={rarity.id}
+                  isSpecial={true}
+                  hideUpgradeButton={true} // Hide upgrade button for rarity 13
+                  className="w-full"
+                />
+              </div>
+            ))}
+          </>
         )}
       </div>
     </main>

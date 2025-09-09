@@ -18,17 +18,17 @@ const iconMap = {
 }
 
 const colorMap = {
-  success: "bg-green-50 border-green-200 text-green-800",
-  error: "bg-red-50 border-red-200 text-red-800",
-  info: "bg-blue-50 border-blue-200 text-blue-800",
-  warning: "bg-yellow-50 border-yellow-200 text-yellow-800",
+  success: "bg-[#B9FF66] border-[#191A23] text-[#000000]",
+  error: "bg-[#FF6B6B] border-[#191A23] text-[#000000]",
+  info: "bg-[#74C0FC] border-[#191A23] text-[#000000]",
+  warning: "bg-[#FFD93D] border-[#191A23] text-[#000000]",
 }
 
 const iconColorMap = {
-  success: "text-green-600",
-  error: "text-red-600",
-  info: "text-blue-600",
-  warning: "text-yellow-600",
+  success: "text-[#000000]",
+  error: "text-[#000000]",
+  info: "text-[#000000]",
+  warning: "text-[#000000]",
 }
 
 export function Notification({ notification, onRemove }: NotificationProps) {
@@ -37,7 +37,7 @@ export function Notification({ notification, onRemove }: NotificationProps) {
   return (
     <div
       className={cn(
-        "relative flex items-start space-x-3 p-4 rounded-lg border shadow-lg max-w-sm w-full mb-3 animate-in slide-in-from-right-2 duration-300",
+        "relative flex items-start space-x-3 p-4 sm:p-6 rounded-3xl sm:rounded-[45px] border shadow-[0px_5px_0px_#191A23] w-full animate-in slide-in-from-top-2 duration-300",
         colorMap[notification.type]
       )}
     >
@@ -50,9 +50,9 @@ export function Notification({ notification, onRemove }: NotificationProps) {
       </div>
       <button
         onClick={() => onRemove(notification.id)}
-        className="flex-shrink-0 ml-2 p-1 rounded-full hover:bg-black hover:bg-opacity-10 transition-colors"
+        className="flex-shrink-0 ml-2 p-1 rounded-full hover:bg-[#191A23] hover:bg-opacity-10 transition-colors"
       >
-        <X className="h-4 w-4" />
+        <X className="h-4 w-4 text-[#000000]" />
       </button>
     </div>
   )

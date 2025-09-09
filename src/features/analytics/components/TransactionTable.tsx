@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Button, Badge } from '@/ui'
-import { ExternalLink, ChevronDown, Loader2 } from 'lucide-react'
-import { Transaction } from '@/lib/AnalyticsContext'
+import { ExternalLink, ChevronUp, ChevronDown, ChevronsLeft, ChevronsRight, Loader2 } from 'lucide-react'
+import { Transaction } from '@/features/analytics/lib/AnalyticsContext'
 import { formatDistanceToNow } from 'date-fns'
 
 interface TransactionTableProps {
@@ -13,18 +13,90 @@ interface TransactionTableProps {
   isLoading: boolean
 }
 
+type SortField = 'value' | 'method' | 'timestamp'
+type SortDirection = 'asc' | 'desc'
+
 export function TransactionTable({
   transactions,
   onLoadMore,
   hasMore,
   isLoading
 }: TransactionTableProps) {
+  const [sortField, setSortField] = useState<SortField>('timestamp')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [currentPage, setCurrentPage] = useState(1)
   const [loadingMore, setLoadingMore] = useState(false)
+
+  const itemsPerPage = 5
+
+  // Sorting function
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      // New field, default to descending
+      setSortField(field)
+      setSortDirection('desc')
+    }
+    setCurrentPage(1) // Reset to first page when sorting
+  }
+
+  // Sorted and paginated transactions
+  const processedTransactions = useMemo(() => {
+    // Sort transactions
+    const sorted = [...transactions].sort((a, b) => {
+      let aValue: any, bValue: any
+
+      switch (sortField) {
+        case 'value':
+          aValue = parseFloat(a.value) || 0
+          bValue = parseFloat(b.value) || 0
+          break
+        case 'method':
+          aValue = a.method || ''
+          bValue = b.method || ''
+          break
+        case 'timestamp':
+          aValue = new Date(a.timestamp).getTime()
+          bValue = new Date(b.timestamp).getTime()
+          break
+        default:
+          return 0
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+
+    return sorted
+  }, [transactions, sortField, sortDirection])
+
+  // Paginate transactions
+  const totalPages = Math.ceil(processedTransactions.length / itemsPerPage)
+  const paginatedTransactions = processedTransactions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  // Pagination controls
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)))
+  }
 
   const handleLoadMore = async () => {
     setLoadingMore(true)
     await onLoadMore()
     setLoadingMore(false)
+  }
+
+  // Sort indicator component
+  const SortIndicator = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return null
+    return sortDirection === 'asc' ?
+      <ChevronUp className="inline h-4 w-4 ml-1" /> :
+      <ChevronDown className="inline h-4 w-4 ml-1" />
   }
 
   const getStatusBadge = (status: number | null) => {
@@ -67,15 +139,30 @@ export function TransactionTable({
                 <th className="px-4 py-3 text-left text-sm font-medium">Transaction</th>
                 <th className="px-4 py-3 text-left text-sm font-medium">From</th>
                 <th className="px-4 py-3 text-left text-sm font-medium">To</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Value</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Method</th>
+                <th
+                  className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-muted/70 transition-colors"
+                  onClick={() => handleSort('value')}
+                >
+                  Value <SortIndicator field="value" />
+                </th>
+                <th
+                  className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-muted/70 transition-colors"
+                  onClick={() => handleSort('method')}
+                >
+                  Method <SortIndicator field="method" />
+                </th>
                 <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
+                <th
+                  className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-muted/70 transition-colors"
+                  onClick={() => handleSort('timestamp')}
+                >
+                  Time <SortIndicator field="timestamp" />
+                </th>
                 <th className="px-4 py-3 text-left text-sm font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {transactions.map((tx) => (
+              {paginatedTransactions.map((tx) => (
                 <tr key={tx.hash} className="hover:bg-muted/30">
                   <td className="px-4 py-3">
                     <div className="font-mono text-sm">
@@ -133,8 +220,57 @@ export function TransactionTable({
         </div>
       </div>
 
-      {/* Load More Button */}
-      {hasMore && (
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronDown className="h-4 w-4 rotate-90" />
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronDown className="h-4 w-4 -rotate-90" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(totalPages)}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Load More for Additional Data */}
+      {hasMore && processedTransactions.length >= currentPage * itemsPerPage && (
         <div className="flex justify-center">
           <Button
             onClick={handleLoadMore}
@@ -158,8 +294,8 @@ export function TransactionTable({
 
       {/* Stats */}
       <div className="text-sm text-muted-foreground text-center">
-        Showing {transactions.length} transactions
-        {!hasMore && transactions.length > 0 && ' • No more transactions to load'}
+        Showing {paginatedTransactions.length} of {processedTransactions.length} transactions
+        {hasMore && ' • Load more to see additional transactions'}
       </div>
     </div>
   )

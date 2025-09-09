@@ -8,7 +8,7 @@ import {
   Tooltip,
   Legend
 } from 'recharts'
-import { Transaction } from '@/lib/AnalyticsContext'
+import { Transaction } from '@/features/analytics/lib/AnalyticsContext'
 
 interface TransactionPieChartProps {
   transactions: Transaction[]

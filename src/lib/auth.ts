@@ -1,5 +1,5 @@
 import { SiweMessage } from 'siwe';
-import { useSignMessage, useAccount } from 'wagmi';
+import { useSignMessage, useAccount, useSwitchChain } from 'wagmi';
 
 // Types
 export interface AuthResult {
@@ -202,6 +202,130 @@ export const refreshAccessToken = async (): Promise<string | null> => {
 };
 
 /**
+ * Parse JWT token to extract payload
+ */
+export const parseJWT = (token: string): any => {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid JWT format');
+    }
+    
+    const payload = parts[1];
+    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.error('Failed to parse JWT:', error);
+    return null;
+  }
+};
+
+/**
+ * Get wallet address from access token
+ */
+export const getWalletAddressFromToken = async (): Promise<string | null> => {
+  const token = await getAccessToken();
+  if (!token) return null;
+  
+  const payload = parseJWT(token);
+  return payload?.wallet_address || null;
+};
+
+/**
+ * Refresh user's contract data (useful after minting or other contract interactions)
+ */
+export const refreshUserContractData = async (): Promise<{
+  balances: Record<number, bigint>;
+  mintCount: bigint;
+  currentPhase: number;
+} | null> => {
+  const walletAddress = await getWalletAddressFromToken();
+  if (!walletAddress) {
+    console.error('No wallet address found in token');
+    return null;
+  }
+  
+  return fetchUserContractData(walletAddress);
+};
+
+/**
+ * Fetch user's smart contract data after authentication
+ */
+export const fetchUserContractData = async (walletAddress: string): Promise<{
+  balances: Record<number, bigint>;
+  mintCount: bigint;
+  currentPhase: number;
+} | null> => {
+  try {
+    console.log('Fetching contract data for wallet:', walletAddress);
+    
+    // Import contract utilities dynamically to avoid circular dependencies
+    const { createPublicClient, http } = await import('viem');
+    const { taikoHekla } = await import('./rainbowkit');
+    const { CONTRACT_ADDRESS, CONTRACT_ABI } = await import('./contract');
+    
+    const client = createPublicClient({
+      chain: taikoHekla,
+      transport: http(),
+    });
+    
+    // Fetch user's balances for all rarity levels (1-13)
+    const balancePromises = [];
+    for (let rarity = 1; rarity <= 13; rarity++) {
+      balancePromises.push(
+        client.readContract({
+          address: CONTRACT_ADDRESS,
+          abi: CONTRACT_ABI,
+          functionName: 'balanceOf',
+          args: [walletAddress as `0x${string}`, BigInt(rarity)],
+        })
+      );
+    }
+    
+    // Fetch user's mint count
+    const mintCountPromise = client.readContract({
+      address: CONTRACT_ADDRESS,
+      abi: CONTRACT_ABI,
+      functionName: 'mintCount',
+      args: [walletAddress as `0x${string}`],
+    });
+    
+    // Fetch current phase
+    const currentPhasePromise = client.readContract({
+      address: CONTRACT_ADDRESS,
+      abi: CONTRACT_ABI,
+      functionName: 'currentPhase',
+    });
+    
+    // Wait for all contract calls to complete
+    const [balances, mintCount, currentPhase] = await Promise.all([
+      Promise.all(balancePromises),
+      mintCountPromise,
+      currentPhasePromise,
+    ]);
+    
+    // Convert balances to a more usable format
+    const balanceMap: Record<number, bigint> = {};
+    balances.forEach((balance, index) => {
+      balanceMap[index + 1] = balance as bigint;
+    });
+    
+    const contractData = {
+      balances: balanceMap,
+      mintCount: mintCount as bigint,
+      currentPhase: Number(currentPhase),
+    };
+    
+    console.log('Contract data fetched successfully:', contractData);
+    return contractData;
+    
+  } catch (error) {
+    console.error('Failed to fetch contract data:', error);
+    return null;
+  }
+};
+
+/**
  * Get current access token (refreshes if needed)
  */
 export const getAccessToken = async (): Promise<string | null> => {
@@ -286,14 +410,23 @@ export const silentReconnect = async (address: string): Promise<AuthResult> => {
     const hasValidTokensResult = await hasValidTokens();
 
     if (hasValidTokensResult && accessToken) {
-      // We have valid tokens, just return success without SIWE
-      // The user will still need to connect their wallet, but no signing required
+      // We have valid tokens, get the actual user data
+      try {
+        const userData = await bootstrapAuth();
+        if (userData) {
+          return {
+            success: true,
+            user: userData,
+          };
+        }
+      } catch (error) {
+        console.error('Failed to get user data during silent reconnect:', error);
+      }
+      
+      // If we can't get user data, fall back to full SIWE
       return {
-        success: true,
-        user: {
-          id: 'reconnected', // We'll get the actual user data from the context
-          wallet_address: address,
-        },
+        success: false,
+        error: 'Valid tokens found but could not retrieve user data',
       };
     }
 
@@ -343,6 +476,7 @@ export const bootstrapAuth = async (): Promise<AuthUser | null> => {
 export const useWalletAuth = () => {
   const { signMessageAsync } = useSignMessage();
   const { chainId } = useAccount();
+  const { switchChain } = useSwitchChain();
 
   const authenticate = async (address: string): Promise<AuthResult> => {
     try {
@@ -353,10 +487,11 @@ export const useWalletAuth = () => {
         };
       }
 
+      // Check if we need to switch chains
       if (chainId !== TAIKO_HEKLA_CHAIN_ID) {
         return {
           success: false,
-          error: 'Please switch to Taiko Hekla network',
+          error: 'CHAIN_SWITCH_REQUIRED',
         };
       }
 
@@ -396,8 +531,42 @@ export const useWalletAuth = () => {
     }
   };
 
+  const switchToTaikoHekla = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (!switchChain) {
+        return {
+          success: false,
+          error: 'Chain switching not available',
+        };
+      }
+
+      await switchChain({ chainId: TAIKO_HEKLA_CHAIN_ID });
+      return { success: true };
+    } catch (error) {
+      console.error('Chain switch error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to switch chain';
+      const isUserCancellation =
+        errorMessage.includes('User rejected') ||
+        errorMessage.includes('User denied') ||
+        errorMessage.includes('User cancelled') ||
+        errorMessage.includes('User canceled') ||
+        errorMessage.includes('rejected') ||
+        errorMessage.includes('denied') ||
+        errorMessage.includes('cancelled') ||
+        errorMessage.includes('canceled') ||
+        errorMessage.includes('4001') ||
+        errorMessage.includes('ACTION_REJECTED');
+
+      return {
+        success: false,
+        error: isUserCancellation ? 'User cancelled chain switch' : errorMessage,
+      };
+    }
+  };
+
   return {
     authenticate,
+    switchToTaikoHekla,
     silentReconnect,
     logout,
     isAuthenticated,

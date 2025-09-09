@@ -12,25 +12,94 @@ import {
   AreaChart
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
-import { DailyStats } from '@/lib/AnalyticsContext'
+import { DailyStats } from '@/features/analytics/lib/AnalyticsContext'
 
 interface TransactionChartProps {
   data: DailyStats[]
 }
 
 export function TransactionChart({ data }: TransactionChartProps) {
-  const chartData = data.map(item => ({
-    ...item,
-    date: format(parseISO(item.date), 'MMM dd'),
-    fullDate: item.date
-  })).reverse() // Reverse to show oldest first
+  // Check if all data has zero values (no actual transactions)
+  const hasAnyData = data.some(item => item.total_txs > 0 || item.successful_txs > 0 || item.failed_txs > 0)
+  
+  // If no data, show a message instead of an empty chart
+  if (!hasAnyData) {
+    return (
+      <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+        <div className="text-center">
+          <p className="text-lg font-medium">No Transaction Data</p>
+          <p className="text-sm">No transactions recorded for the selected period</p>
+        </div>
+      </div>
+    )
+  }
+  
+  const chartData = data.map((item, index) => {
+    try {
+      // Parse the date - it should be in YYYY-MM-DD format
+      let formattedDate = 'Invalid Date'
+      let fullDate = item.date
+
+      if (item.date) {
+        // Parse as YYYY-MM-DD format
+        const dateObj = new Date(item.date + 'T00:00:00') // Add time to ensure proper parsing
+        
+        if (!isNaN(dateObj.getTime())) {
+          formattedDate = format(dateObj, 'MMM dd')
+          fullDate = dateObj.toISOString()
+        } else {
+          // Fallback if parsing fails
+          const fallbackDate = new Date()
+          fallbackDate.setDate(fallbackDate.getDate() - (data.length - index - 1))
+          formattedDate = format(fallbackDate, 'MMM dd')
+          fullDate = fallbackDate.toISOString()
+        }
+      } else {
+        // No date provided, use fallback
+        const fallbackDate = new Date()
+        fallbackDate.setDate(fallbackDate.getDate() - (data.length - index - 1))
+        formattedDate = format(fallbackDate, 'MMM dd')
+        fullDate = fallbackDate.toISOString()
+      }
+
+      return {
+        ...item,
+        date: formattedDate,
+        fullDate: fullDate
+      }
+    } catch (error) {
+      console.error('Error formatting date:', item.date, error)
+      // Use fallback date
+      const fallbackDate = new Date()
+      fallbackDate.setDate(fallbackDate.getDate() - (data.length - index - 1))
+      return {
+        ...item,
+        date: format(fallbackDate, 'MMM dd'),
+        fullDate: fallbackDate.toISOString()
+      }
+    }
+  }).reverse() // Reverse to show oldest first
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload
+
+      // Safely format the date
+      let formattedDate = 'Invalid Date'
+      try {
+        if (data.fullDate && data.fullDate !== 'Invalid Date') {
+          const dateObj = new Date(data.fullDate)
+          if (!isNaN(dateObj.getTime())) {
+            formattedDate = format(dateObj, 'MMM dd, yyyy')
+          }
+        }
+      } catch (error) {
+        console.error('Error formatting tooltip date:', data.fullDate, error)
+      }
+
       return (
         <div className="bg-background border border-border rounded-lg p-3 shadow-md">
-          <p className="font-medium">{format(parseISO(data.fullDate), 'MMM dd, yyyy')}</p>
+          <p className="font-medium">{formattedDate}</p>
           <p className="text-sm text-green-600">
             Successful: {data.successful_txs?.toLocaleString() || 0}
           </p>

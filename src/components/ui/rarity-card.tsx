@@ -3,16 +3,33 @@ import { cn } from "./lib/utils"
 
 export interface RarityCardProps extends React.HTMLAttributes<HTMLDivElement> {
   rarity: string
-  rarityLevel: string
+  rarityLevel?: string
   cardCount: number
   onUpgrade?: () => void
   variant?: "default" | "primary" | "dark"
   canUpgrade?: boolean
   tokenId?: number
+  isSpecial?: boolean
+  hideCollectedCount?: boolean
+  hideUpgradeButton?: boolean
+  isAuthenticated?: boolean
 }
 
 const RarityCard = React.forwardRef<HTMLDivElement, RarityCardProps>(
-  ({ className, rarity, rarityLevel, cardCount, onUpgrade, variant = "default", canUpgrade = cardCount >= 2, tokenId, ...props }, ref) => {
+  ({ className, rarity, rarityLevel, cardCount, onUpgrade, variant = "default", canUpgrade = cardCount >= 2, tokenId, isSpecial = false, hideCollectedCount = false, hideUpgradeButton = false, isAuthenticated = true, ...props }, ref) => {
+    const [imageLoaded, setImageLoaded] = React.useState(false);
+    const [imageError, setImageError] = React.useState(false);
+
+    // Debug logging
+    React.useEffect(() => {
+      console.log('RarityCard rendered:', {
+        tokenId,
+        rarity,
+        imagePath: `/rarity-${tokenId || 1}.webp`,
+        isSpecial
+      });
+    }, [tokenId, rarity, isSpecial]);
+
     // Calculate colors based on tokenId % 3
     const getMod3 = () => {
       if (!tokenId) return 0;
@@ -51,7 +68,10 @@ const RarityCard = React.forwardRef<HTMLDivElement, RarityCardProps>(
       <div
         ref={ref}
         className={cn(
-          "flex flex-col lg:flex-row justify-between items-center p-[30px] lg:p-[50px] gap-[25px] lg:gap-[77px] w-full h-auto lg:h-[350px] border border-[#191A23] shadow-[0px_5px_0px_#191A23] rounded-[45px] box-border",
+          "flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6 lg:gap-8 w-full border border-[#191A23] shadow-[0px_5px_0px_#191A23] rounded-3xl sm:rounded-[45px]",
+          isSpecial 
+            ? "p-6 sm:p-8 lg:p-12 min-h-[400px] sm:min-h-[500px] lg:min-h-[600px]" 
+            : "p-4 sm:p-6 lg:p-8 min-h-[300px] sm:min-h-[350px] lg:min-h-[400px]",
           getCardBackgroundColor() === "#F3F3F3" ? "bg-[#F3F3F3]" : "",
           getCardBackgroundColor() === "#B9FF66" ? "bg-[#B9FF66]" : "",
           getCardBackgroundColor() === "#191A23" ? "bg-[#191A23]" : "",
@@ -59,59 +79,86 @@ const RarityCard = React.forwardRef<HTMLDivElement, RarityCardProps>(
         )}
         {...props}
       >
-        {/* Left side - Heading and link */}
-        <div className="flex flex-col justify-center items-center lg:items-start p-0 gap-[25px] lg:gap-[35px] w-full lg:w-auto h-auto lg:h-[250px] box-border">
+        {/* Left side - Content */}
+        <div className={cn(
+          "flex flex-col justify-center items-center md:items-start w-full md:w-auto md:flex-1",
+          isSpecial ? "gap-6 sm:gap-8 lg:gap-10" : "gap-4 sm:gap-6"
+        )}>
           {/* Rarity label */}
           <div className={cn(
-            "flex flex-col items-start p-0 gap-[10px] w-[140px] h-[45px] rounded-[7px] box-border",
+            "flex items-center justify-center px-4 py-2 rounded-lg w-fit",
+            isSpecial ? "px-6 py-3 min-w-[160px]" : "min-w-[120px]",
             getTextBackgroundColor() === "#B9FF66" ? "bg-[#B9FF66]" : "bg-[#F3F3F3]"
           )}>
-            <div className="w-[126px] h-[45px] font-['Space_Grotesk'] font-medium text-[24px] lg:text-[32px] leading-[45px] text-[#000000] box-border">
+            <span className={cn(
+              "font-['Space_Grotesk'] font-medium text-[#000000] whitespace-nowrap",
+              isSpecial ? "text-2xl sm:text-3xl lg:text-4xl" : "text-lg sm:text-xl lg:text-2xl"
+            )}>
               {rarity}
-            </div>
+            </span>
           </div>
 
-          {/* Rarity level */}
-          <div className={cn(
-            "flex flex-col items-start p-0 gap-[10px] w-[200px] h-[45px] rounded-[7px] box-border",
-            getTextBackgroundColor() === "#B9FF66" ? "bg-[#B9FF66]" : "bg-[#F3F3F3]"
-          )}>
-            <div className="w-[186px] h-[45px] font-['Space_Grotesk'] font-medium text-[24px] lg:text-[32px] leading-[45px] text-[#000000] box-border">
-              {rarityLevel}
-            </div>
-          </div>
 
-          {/* Card count */}
-          <div className={cn(
-            "flex flex-col justify-center items-center p-0 gap-[10px] w-full lg:w-[220px] h-[40px] rounded-[7px] box-border",
-            getTextBackgroundColor() === "#B9FF66" ? "bg-[#B9FF66]" : "bg-[#F3F3F3]"
-          )}>
-            <div className="w-full lg:w-[206px] h-[40px] font-['Space_Grotesk'] font-medium text-[24px] lg:text-[32px] leading-[40px] text-[#000000] text-center box-border">
-              {cardCount}/2 Collected
+          {/* Card count - conditionally rendered */}
+          {!hideCollectedCount && (
+            <div className={cn(
+              "flex items-center justify-center px-4 py-2 rounded-lg w-full",
+              isSpecial ? "px-6 py-3 max-w-[300px]" : "max-w-[200px]",
+              getTextBackgroundColor() === "#B9FF66" ? "bg-[#B9FF66]" : "bg-[#F3F3F3]"
+            )}>
+              <span className={cn(
+                "font-['Space_Grotesk'] font-medium text-[#000000] text-center",
+                isSpecial ? "text-2xl sm:text-3xl lg:text-4xl" : "text-lg sm:text-xl lg:text-2xl"
+              )}>
+                {cardCount}/2 Collected
+              </span>
             </div>
-          </div>
+          )}
 
-          {/* Upgrade button */}
-          <button
-            onClick={canUpgrade ? onUpgrade : undefined}
-            disabled={!canUpgrade}
-            className={cn(
-              "flex flex-row justify-center items-center px-[25px] lg:px-[40px] py-[18px] lg:py-[22px] gap-[10px] w-full lg:w-[180px] h-[48px] rounded-[14px] font-['Space_Grotesk'] font-normal text-[18px] lg:text-[22px] leading-[32px] text-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-              getButtonColor() === "#191A23" ? "bg-[#191A23] text-[#FFFFFF]" : "bg-[#F3F3F3] text-[#000000]",
-              !canUpgrade && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            {canUpgrade ? "Upgrade" : "Need 2+ Tokens"}
-          </button>
+          {/* Upgrade button - conditionally rendered */}
+          {!hideUpgradeButton && (
+            <button
+              onClick={canUpgrade ? onUpgrade : undefined}
+              disabled={!canUpgrade}
+              className={cn(
+                "flex items-center justify-center px-4 sm:px-6 py-3 rounded-xl font-['Space_Grotesk'] font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 w-full min-h-[48px]",
+                isSpecial 
+                  ? "px-6 py-4 text-xl sm:text-2xl lg:text-3xl max-w-[300px] min-h-[60px]" 
+                  : "text-base sm:text-lg max-w-[200px]",
+                getButtonColor() === "#191A23" ? "bg-[#191A23] text-[#FFFFFF] hover:bg-[#2a2b35]" : "bg-[#F3F3F3] text-[#000000] hover:bg-[#e8e8e8]",
+                !canUpgrade && "opacity-50 cursor-not-allowed hover:bg-current"
+              )}
+            >
+              {!isAuthenticated ? "Connect Wallet" : "Upgrade"}
+            </button>
+          )}
         </div>
 
-        {/* Right side - Illustration */}
-        <div className="flex-shrink-0 w-full lg:w-auto max-w-[240px] h-[160px] lg:h-[220px] box-border">
-          <div className="relative w-full h-full bg-muted rounded-2xl border-2 border-dashed border-muted-foreground/30 flex items-center justify-center overflow-hidden">
-            <div className="text-center text-muted-foreground">
-              <div className="text-3xl lg:text-4xl mb-2">🎴</div>
-              <div className="text-sm font-medium">Rarity Image</div>
-            </div>
+        {/* Right side - Rarity Card Image */}
+        <div className={cn(
+          "flex-shrink-0 w-full md:w-auto",
+          isSpecial 
+            ? "md:max-w-[400px] lg:max-w-[500px] xl:max-w-[600px] h-[300px] sm:h-[400px] md:h-[450px] lg:h-[500px] xl:h-[550px]"
+            : "md:max-w-[300px] lg:max-w-[350px] xl:max-w-[400px] h-[200px] sm:h-[250px] md:h-[280px] lg:h-[320px] xl:h-[350px]"
+        )}>
+          <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-lg">
+            <img
+              src={`/rarity-${tokenId || 1}.webp`}
+              alt={`${rarity} Card`}
+              className="w-full h-full object-cover rounded-2xl"
+              onError={(e) => {
+                console.error(`Failed to load image: /rarity-${tokenId || 1}.webp`);
+                // Fallback to first rarity card if specific card doesn't exist
+                const target = e.target as HTMLImageElement;
+                if (!target.src.includes('rarity-1.webp')) {
+                  console.log('Falling back to rarity-1.webp');
+                  target.src = '/rarity-1.webp';
+                }
+              }}
+              onLoad={() => {
+                console.log(`Successfully loaded image: /rarity-${tokenId || 1}.webp`);
+              }}
+            />
           </div>
         </div>
       </div>

@@ -49,6 +49,8 @@ export type { BadgeProps } from "./badge"
 
 export { RarityCard } from "./rarity-card"
 export type { RarityCardProps } from "./rarity-card"
+export { MintStatsCard } from "./mint-stats-card"
+export type { MintStatsCardProps } from "./mint-stats-card"
 
 export { Header } from "./header"
 export type { HeaderProps } from "./header"
@@ -65,9 +67,10 @@ export type { ProfileDropdownProps } from "./profile-dropdown"
 export { ThemeProvider, useTheme } from "./theme-provider"
 export { ThemeToggle } from "./theme-toggle"
 
-export { NotificationProvider, useNotification } from "./notification-provider"
-export type { Notification, NotificationType } from "./notification-provider"
-export { Notification as NotificationItem } from "./notification"
-export { NotificationContainer } from "./notification-container"
+// Notification system disabled
+// export { NotificationProvider, useNotification } from "./notification-provider"
+// export type { Notification, NotificationType } from "./notification-provider"
+// export { Notification as NotificationItem } from "./notification"
+// export { NotificationContainer } from "./notification-container"
 
 export { cn } from "./lib/utils"

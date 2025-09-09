@@ -39,7 +39,7 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
       { label: "Inventory" },
       { label: "Analytics" }
     ],
-    walletButtonText = "Connect to wallet",
+    walletButtonText = "Connect your wallet",
     onWalletConnect,
     onAuthenticated,
     onLogout,
@@ -53,13 +53,14 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
     onStartConnectionAttempt,
     ...props
   }, ref) => {
-    const { openConnectModal } = useConnectModal();
+    const { openConnectModal, connectModalOpen } = useConnectModal();
     const { openAccountModal } = useAccountModal();
     const { address, isConnected } = useAccount();
     const { disconnect } = useDisconnect();
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = React.useState(false);
+    const [waitingForDisconnect, setWaitingForDisconnect] = React.useState(false);
 
-    console.log('Header render - user:', user, 'authFlowState:', authFlowState, 'isConnected:', isConnected, 'address:', address);
+    console.log('Header render - user:', user, 'authFlowState:', authFlowState, 'isConnected:', isConnected, 'address:', address, 'connectModalOpen:', connectModalOpen);
 
     // Trigger authentication when wallet connects (only if we initiated the connection)
     React.useEffect(() => {
@@ -71,6 +72,7 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
         return;
       }
 
+      // Only trigger authentication if we're in connecting state and have the necessary callbacks
       if (isConnected && address && onAuthenticated && authFlowState === 'connecting') {
         console.log('Wallet connected successfully, will trigger authentication in 300ms');
         // Add a small delay to ensure this isn't a brief connection flash from cancellation
@@ -81,9 +83,35 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
 
         return () => clearTimeout(timeoutId);
       }
-      // Don't automatically start connection attempt if wallet is connected but flow is idle
-      // Let user explicitly click connect button
+      
+      // If wallet is connected but user is not authenticated and we're not in connecting state,
+      // this might be a leftover connection from before logout - don't auto-trigger auth
+      if (isConnected && address && !user && authFlowState === 'idle') {
+        console.log('Wallet connected but user not authenticated and flow is idle - waiting for user to click connect');
+      }
     }, [isConnected, address, onAuthenticated, authFlowState, onStartConnectionAttempt, user]);
+
+    // Handle opening connect modal after disconnect completes
+    React.useEffect(() => {
+      if (waitingForDisconnect && !isConnected && !address) {
+        console.log('Disconnect completed, opening connect modal');
+        setWaitingForDisconnect(false);
+        openConnectModal?.();
+        onWalletConnect?.();
+      }
+    }, [waitingForDisconnect, isConnected, address, openConnectModal, onWalletConnect]);
+
+    // Timeout to reset waitingForDisconnect state if disconnect takes too long
+    React.useEffect(() => {
+      if (waitingForDisconnect) {
+        const timeout = setTimeout(() => {
+          console.log('Disconnect timeout, resetting state');
+          setWaitingForDisconnect(false);
+        }, 5000); // 5 second timeout
+
+        return () => clearTimeout(timeout);
+      }
+    }, [waitingForDisconnect]);
 
     // Reset flow if user disconnects wallet during the process (but not during intentional disconnect)
     React.useEffect(() => {
@@ -95,6 +123,40 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
         }
       }
     }, [isConnected, address, authFlowState, onResetAuthFlow]);
+
+    // Track modal state to detect when it closes without connecting
+    const [wasModalOpen, setWasModalOpen] = React.useState(false);
+    
+    React.useEffect(() => {
+      console.log('Modal state effect:', { connectModalOpen, wasModalOpen, authFlowState, isConnected, address });
+      
+      if (connectModalOpen) {
+        console.log('Modal opened, setting wasModalOpen to true');
+        setWasModalOpen(true);
+      } else if (wasModalOpen && !connectModalOpen) {
+        // Modal was open and is now closed
+        console.log('Modal closed, wasModalOpen was true');
+        setWasModalOpen(false);
+        
+        // Only reset if we're still in connecting state and no wallet is connected
+        if (authFlowState === 'connecting' && !isConnected && !address && onResetAuthFlow) {
+          console.log('Modal closed without connecting, will reset in 1 second');
+          const timeoutId = setTimeout(() => {
+            // Final check before resetting
+            if (authFlowState === 'connecting' && !isConnected && !address) {
+              console.log('Resetting auth flow after modal close');
+              onResetAuthFlow();
+            } else {
+              console.log('Auth state changed during timeout, not resetting:', { authFlowState, isConnected, address });
+            }
+          }, 1000);
+          
+          return () => clearTimeout(timeoutId);
+        } else {
+          console.log('Not resetting because conditions not met:', { authFlowState, isConnected, address, hasOnResetAuthFlow: !!onResetAuthFlow });
+        }
+      }
+    }, [connectModalOpen, wasModalOpen, authFlowState, isConnected, address, onResetAuthFlow]);
 
 
     // Close dropdown when clicking outside
@@ -114,7 +176,7 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
       <header
         ref={ref}
         className={cn(
-          "flex items-center justify-between w-full max-w-4xl mx-auto py-6 px-6 pt-8",
+          "flex items-center justify-between w-full max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 pt-8",
           className
         )}
         {...props}
@@ -165,7 +227,7 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
           {user ? (
             <ProfileDropdown
               userAddress={user.address}
-              userName={user.username || user.address || 'User'}
+              userName={user.username || undefined}
               isOpen={isProfileDropdownOpen}
               onToggle={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
               onProfileClick={() => {
@@ -180,7 +242,7 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
           ) : (
             <button
               onClick={() => {
-                console.log('Connect button clicked, current state:', { isConnected, authFlowState });
+                console.log('Connect button clicked, current state:', { isConnected, authFlowState, hasUser: !!user });
 
                 // Always start with a fresh connection attempt
                 if (onStartConnectionAttempt) {
@@ -188,27 +250,27 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
                   onStartConnectionAttempt();
                 }
 
-                // If wallet is already connected, disconnect it first to force wallet selection
-                if (isConnected) {
-                  console.log('Disconnecting existing wallet to show wallet selection');
+                // If wallet is already connected but user is not authenticated (after logout), 
+                // disconnect it first to force wallet selection
+                if (isConnected && !user) {
+                  console.log('Wallet connected but user not authenticated (after logout), disconnecting first');
+                  setWaitingForDisconnect(true);
                   disconnect();
-                  // Add a small delay to ensure disconnect completes before opening modal
-                  setTimeout(() => {
-                    console.log('Opening connect modal after disconnect delay');
-                    openConnectModal?.();
-                    onWalletConnect?.();
-                  }, 200); // Increased delay to ensure state is stable
+                  // The useEffect will handle opening the modal after disconnect completes
+                } else if (isConnected && user) {
+                  // User is already authenticated, this shouldn't happen as button should be hidden
+                  console.log('User already authenticated, this should not happen');
                 } else {
-                  // Open connect modal (will show wallet selection if disconnected)
+                  // Wallet not connected, open connect modal
                   console.log('Opening connect modal');
                   openConnectModal?.();
                   onWalletConnect?.();
                 }
               }}
-              disabled={authFlowState === 'connecting' || authFlowState === 'network_switch' || authFlowState === 'signing' || authFlowState === 'authenticating'}
+              disabled={connectModalOpen || authFlowState === 'connecting' || authFlowState === 'network_check' || authFlowState === 'network_switch' || authFlowState === 'signing' || authFlowState === 'authenticating' || waitingForDisconnect}
               className={cn(
                 "relative px-4 py-2 border border-foreground rounded-md bg-background text-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-[0_4px_0_0_rgba(0,0,0,1)] hover:shadow-[0_6px_0_0_rgba(0,0,0,1)] hover:-translate-y-0.5 overflow-hidden group",
-                (authFlowState === 'connecting' || authFlowState === 'network_switch' || authFlowState === 'signing' || authFlowState === 'authenticating') && "opacity-50 cursor-not-allowed"
+                (connectModalOpen || authFlowState === 'connecting' || authFlowState === 'network_check' || authFlowState === 'network_switch' || authFlowState === 'signing' || authFlowState === 'authenticating' || waitingForDisconnect) && "opacity-50 cursor-not-allowed"
               )}
             >
               {/* Fill Animation Background */}
@@ -216,10 +278,12 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
 
               {/* Button Text */}
               <span className="relative z-10">
-                {authFlowState === 'connecting' ? 'Connecting...' :
+                {waitingForDisconnect ? 'Disconnecting...' :
+                 connectModalOpen ? 'Connecting...' :
+                 authFlowState === 'connecting' ? 'Connecting...' :
                  authFlowState === 'network_check' ? 'Checking Network...' :
                  authFlowState === 'network_switch' ? 'Switching Network...' :
-                 authFlowState === 'signing' ? 'Signing...' :
+                 authFlowState === 'signing' ? 'Signing Message...' :
                  authFlowState === 'authenticating' ? 'Authenticating...' :
                  walletButtonText}
               </span>

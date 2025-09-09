@@ -39,8 +39,18 @@ export const useRarityBalances = (): RarityBalancesResult => {
   const rarity3 = useRarityBalance(3);
   const rarity4 = useRarityBalance(4);
   const rarity5 = useRarityBalance(5);
+  const rarity6 = useRarityBalance(6);
+  const rarity7 = useRarityBalance(7);
+  const rarity8 = useRarityBalance(8);
+  const rarity9 = useRarityBalance(9);
+  const rarity10 = useRarityBalance(10);
+  const rarity11 = useRarityBalance(11);
+  const rarity12 = useRarityBalance(12);
+  const rarity13 = useRarityBalance(13);
 
-  const balanceCalls = [rarity1, rarity2, rarity3, rarity4, rarity5];
+  const balanceCalls = React.useMemo(() => [
+    rarity1, rarity2, rarity3, rarity4, rarity5, rarity6, rarity7, rarity8, rarity9, rarity10, rarity11, rarity12, rarity13
+  ], [rarity1, rarity2, rarity3, rarity4, rarity5, rarity6, rarity7, rarity8, rarity9, rarity10, rarity11, rarity12, rarity13]);
 
   // Extract data from all calls
   const balances = balanceCalls.map(call => call.data ?? BigInt(0));
@@ -69,7 +79,7 @@ export const useRarityBalances = (): RarityBalancesResult => {
   // Refetch function that calls refetch on all balance calls
   const refetch = React.useCallback(() => {
     balanceCalls.forEach(call => call.refetch());
-  }, [rarity1, rarity2, rarity3, rarity4, rarity5]);
+  }, [balanceCalls]);
 
   return {
     rarities,

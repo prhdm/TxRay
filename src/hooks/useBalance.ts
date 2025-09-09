@@ -29,14 +29,7 @@ export const useBalance = (address?: `0x${string}`, tokenId: bigint = BigInt(0))
     },
   });
 
-  // Debug logging (remove after fixing)
-  console.log('Balance hook debug:', {
-    targetAddress,
-    balance,
-    isLoading,
-    error: error ? (error as Error).message : null,
-    hasAddress: !!targetAddress
-  });
+  // Debug logging removed to prevent re-renders
 
   return {
     balance,

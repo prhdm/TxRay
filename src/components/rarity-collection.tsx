@@ -5,13 +5,13 @@ import {
   Footer
 } from "@/ui";
 import Image from "next/image";
-import { NavigationProvider, useNavigation } from "@/lib/NavigationContext";
-import { useAuth } from "@/lib/AuthContext";
+import { NavigationProvider, useNavigation, type NavigationPage } from "@/features/navigation/lib/NavigationContext";
+import { useAuth } from "@/features/auth/lib/AuthContext";
 import { useNetworkSwitch } from "@/hooks/useNetworkSwitch";
 import InventoryPage from "@/features/inventory/components/InventoryPage";
 import AnalyticsPage from "@/features/analytics/components/AnalyticsPage";
 import ProfilePage from "@/features/profile/components/ProfilePage";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 
 function AppContent() {
   const { currentPage, setCurrentPage } = useNavigation();
@@ -26,12 +26,12 @@ function AppContent() {
   const lastAuthAttemptRef = useRef<number>(0);
   const authInProgressRef = useRef<boolean>(false);
 
-  const handleWalletConnect = () => {
+  const handleWalletConnect = useCallback(() => {
     console.log("Wallet connect button clicked");
     // RainbowKit will handle the actual connection via the custom button
-  };
+  }, []);
 
-  const handleNetworkSwitch = async () => {
+  const handleNetworkSwitch = useCallback(async () => {
     try {
       console.log("Switching to correct network...");
       setShowNetworkModal(false);
@@ -50,17 +50,17 @@ function AppContent() {
       // Reset auth flow on error - no alert shown
       resetAuthFlow();
     }
-  };
+  }, [switchToCorrectNetwork, resetAuthFlow]);
 
-  const handleCancelNetworkSwitch = () => {
+  const handleCancelNetworkSwitch = useCallback(() => {
     console.log("User cancelled network switch, current authFlowState:", authFlowState);
     setShowNetworkModal(false);
     console.log("Calling resetAuthFlow...");
     resetAuthFlow();
     console.log("resetAuthFlow called, authFlowState should now be 'idle'");
-  };
+  }, [authFlowState, resetAuthFlow]);
 
-  const handleAuthenticated = async (address: string) => {
+  const handleAuthenticated = useCallback(async (address: string) => {
     const now = Date.now();
     console.log("🔍 handleAuthenticated called with address:", address, "authFlowState:", authFlowState, "user:", user, "isCorrectNetwork:", isCorrectNetwork);
 
@@ -157,9 +157,9 @@ function AppContent() {
     } finally {
       authInProgressRef.current = false;
     }
-  };
+  }, [authFlowState, user, isCorrectNetwork, authenticate, resetAuthFlow, targetChainName]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       console.log("Logging out user...");
       await signOut();
@@ -167,30 +167,30 @@ function AppContent() {
     } catch (error) {
       console.error("Logout failed:", error);
     }
-  };
+  }, [signOut]);
 
-  const handleProfileClick = () => {
+  const handleProfileClick = useCallback(() => {
     console.log("Profile clicked - navigating to profile page");
     setCurrentPage('profile');
-  };
+  }, [setCurrentPage]);
 
 
-  const handleSubscribe = (email: string) => {
+  const handleSubscribe = useCallback((email: string) => {
     console.log(`Subscribing email: ${email}`);
     // Add your newsletter subscription logic here
-  };
+  }, []);
 
-  const handlePrivacyPolicyClick = () => {
+  const handlePrivacyPolicyClick = useCallback(() => {
     console.log("Privacy Policy clicked");
     // Add your privacy policy navigation logic here
-  };
+  }, []);
 
 
-  const handleNavigationChange = (page: string) => {
-    setCurrentPage(page.toLowerCase() as 'inventory' | 'analytics' | 'profile');
-  };
+  const handleNavigationChange = useCallback((page: string) => {
+    setCurrentPage(page.toLowerCase() as NavigationPage);
+  }, [setCurrentPage]);
 
-  const renderCurrentPage = () => {
+  const renderCurrentPage = useCallback(() => {
     switch (currentPage) {
       case 'inventory':
         return <InventoryPage />;
@@ -201,7 +201,7 @@ function AppContent() {
       default:
         return <InventoryPage />;
     }
-  };
+  }, [currentPage]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -223,7 +223,8 @@ function AppContent() {
         ]}
         activeNavigation={
           currentPage === 'inventory' ? 'Inventory' :
-          currentPage === 'analytics' ? 'Analytics' : undefined
+          currentPage === 'analytics' ? 'Analytics' :
+          currentPage === 'profile' ? 'Profile' : undefined
         }
         onNavigationChange={handleNavigationChange}
         onWalletConnect={handleWalletConnect}

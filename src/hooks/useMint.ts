@@ -6,7 +6,7 @@ import { taikoHekla } from '@/lib/rainbowkit';
 
 export interface MintResult {
   success: boolean;
-  error?: string;
+  error?: string | null;
   hash?: string;
   isLoading: boolean;
 }
@@ -22,6 +22,24 @@ export const useMint = () => {
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
+
+  // Helper function to check if error is user cancellation
+  const isUserCancellation = (error: any): boolean => {
+    if (!error) return false;
+    const message = error.message?.toLowerCase() || '';
+    return (
+      message.includes('user rejected') ||
+      message.includes('user denied') ||
+      message.includes('user cancelled') ||
+      message.includes('user canceled') ||
+      message.includes('rejected') ||
+      message.includes('denied') ||
+      message.includes('cancelled') ||
+      message.includes('canceled') ||
+      message.includes('action rejected') ||
+      message.includes('transaction was rejected')
+    );
+  };
 
   // Reset local loading state when transaction completes
   React.useEffect(() => {
@@ -81,6 +99,18 @@ export const useMint = () => {
       };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Minting failed';
+      
+      // Check if this is a user cancellation
+      if (isUserCancellation(err)) {
+        console.log('User cancelled mint transaction');
+        setError(null);
+        return {
+          success: false,
+          error: null,
+          isLoading: false,
+        };
+      }
+      
       setError(errorMessage);
       return {
         success: false,
@@ -91,15 +121,19 @@ export const useMint = () => {
   };
 
   // Handle write contract errors
-  if (writeError) {
+  if (writeError && !isUserCancellation(writeError)) {
     console.error('Mint write error:', writeError);
     setError(writeError.message);
+  } else if (writeError && isUserCancellation(writeError)) {
+    // User cancelled - don't show error, just reset state
+    console.log('User cancelled mint transaction');
+    setError(null);
   }
 
   return {
     mint,
     isLoading: isLoading || isPending || isConfirming,
-    error: error || writeError?.message || null,
+    error: error || (writeError && !isUserCancellation(writeError) ? writeError.message : null),
     hash,
     isSuccess,
     isConfirming,

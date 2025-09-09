@@ -4,7 +4,7 @@ import { contractConfig } from '@/lib/contract';
 
 export interface UpgradeResult {
   success: boolean;
-  error?: string;
+  error?: string | null;
   hash?: string;
   isLoading: boolean;
 }
@@ -19,6 +19,24 @@ export const useUpgrade = () => {
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
+
+  // Helper function to check if error is user cancellation
+  const isUserCancellation = (error: any): boolean => {
+    if (!error) return false;
+    const message = error.message?.toLowerCase() || '';
+    return (
+      message.includes('user rejected') ||
+      message.includes('user denied') ||
+      message.includes('user cancelled') ||
+      message.includes('user canceled') ||
+      message.includes('rejected') ||
+      message.includes('denied') ||
+      message.includes('cancelled') ||
+      message.includes('canceled') ||
+      message.includes('action rejected') ||
+      message.includes('transaction was rejected')
+    );
+  };
 
   // Reset local loading state when transaction completes
   React.useEffect(() => {
@@ -59,6 +77,18 @@ export const useUpgrade = () => {
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Upgrade failed';
+      
+      // Check if this is a user cancellation
+      if (isUserCancellation(err)) {
+        console.log('User cancelled upgrade transaction');
+        setError(null);
+        return {
+          success: false,
+          error: null,
+          isLoading: false,
+        };
+      }
+      
       setError(errorMessage);
       return {
         success: false,
@@ -69,15 +99,19 @@ export const useUpgrade = () => {
   };
 
   // Handle write contract errors
-  if (writeError) {
+  if (writeError && !isUserCancellation(writeError)) {
     console.error('Upgrade write error:', writeError);
     setError(writeError.message);
+  } else if (writeError && isUserCancellation(writeError)) {
+    // User cancelled - don't show error, just reset state
+    console.log('User cancelled upgrade transaction');
+    setError(null);
   }
 
   return {
     upgrade,
     isLoading: isLoading || isPending || isConfirming,
-    error: error || writeError?.message || null,
+    error: error || (writeError && !isUserCancellation(writeError) ? writeError.message : null),
     hash,
     isSuccess,
     isConfirming,

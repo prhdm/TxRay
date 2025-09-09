@@ -3,13 +3,12 @@
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Input, Badge } from '@/ui'
 import { RefreshCw, TrendingUp, Users, Activity, DollarSign, Zap, Target, Clock } from 'lucide-react'
-import { useAnalytics } from '@/lib/AnalyticsContext'
+import { useAnalytics } from '@/features/analytics/lib/AnalyticsContext'
 import { KPICard } from './KPICard'
 import { TransactionChart } from './TransactionChart'
 import { TransactionPieChart } from './TransactionPieChart'
 import { WalletFilter } from './WalletFilter'
 import { TransactionTable } from './TransactionTable'
-import { AdminWalletSearch } from './AdminWalletSearch'
 
 export function AnalyticsDashboard() {
   const {
@@ -21,10 +20,6 @@ export function AnalyticsDashboard() {
     refreshData,
     hasMoreTransactions,
     loadMoreTransactions,
-    isAdmin,
-    userRole,
-    searchWallets,
-    addWalletToFilter
   } = useAnalytics()
 
   const [refreshing, setRefreshing] = useState(false)
@@ -43,6 +38,12 @@ export function AnalyticsDashboard() {
           <p className="text-sm text-gray-500 mb-4">
             Check the browser console for more details
           </p>
+          <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
+            <p className="text-sm text-blue-800">
+              <strong>Note:</strong> If you see network errors, the indexer service may not be deployed yet.
+              The dashboard will show fallback data in the meantime.
+            </p>
+          </div>
           <Button onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Retry
@@ -71,17 +72,9 @@ export function AnalyticsDashboard() {
         <div>
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-semibold">Dashboard Overview</h2>
-            {userRole && (
-              <Badge variant={isAdmin ? "default" : "secondary"} className="text-xs">
-                {isAdmin ? "Admin" : "User"}
-              </Badge>
-            )}
           </div>
           <p className="text-muted-foreground">
-            {isAdmin
-              ? "Real-time blockchain analytics - Admin View"
-              : "Real-time blockchain analytics - Your transactions"
-            }
+            Real-time blockchain analytics
           </p>
         </div>
         <Button onClick={handleRefresh} disabled={refreshing || isLoading}>
@@ -93,10 +86,6 @@ export function AnalyticsDashboard() {
       {/* Wallet Filter */}
       <WalletFilter />
 
-      {/* Admin Wallet Search */}
-      {isAdmin && (
-        <AdminWalletSearch />
-      )}
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -233,6 +222,7 @@ export function AnalyticsDashboard() {
           </CardContent>
         </Card>
       </div>
+
     </div>
   )
 }
