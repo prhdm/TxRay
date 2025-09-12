@@ -53,6 +53,12 @@ export type { RarityCardProps } from "./rarity-card"
 export { Header } from "./header"
 export type { HeaderProps } from "./header"
 
+export { MobileHeader } from "./mobile-header"
+export type { MobileHeaderProps } from "./mobile-header"
+
+export { Logo } from "./logo"
+export type { LogoProps } from "./logo"
+
 export { CollectionHeader } from "./collection-header"
 export type { CollectionHeaderProps } from "./collection-header"
 
