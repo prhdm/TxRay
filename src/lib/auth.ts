@@ -306,7 +306,7 @@ export const fetchUserContractData = async (walletAddress: string): Promise<{
     
     // Convert balances to a more usable format
     const balanceMap: Record<number, bigint> = {};
-    balances.forEach((balance, index) => {
+    balances.forEach((balance: any, index: number) => {
       balanceMap[index + 1] = balance as bigint;
     });
     

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { useQueryClient } from '@tanstack/react-query';
 import { contractConfig } from '@/lib/contract';
+import { upgradeToasts, contractToasts } from '@/lib/toast';
 
 export interface UpgradeResult {
   success: boolean;
@@ -9,10 +11,21 @@ export interface UpgradeResult {
   isLoading: boolean;
 }
 
-export const useUpgrade = () => {
+export interface UpgradeHookResult {
+  upgrade: (fromTokenId: number, toTokenId: number) => Promise<UpgradeResult>;
+  isLoading: boolean;
+  error: string | null;
+  hash: `0x${string}` | undefined;
+  isSuccess: boolean;
+  isConfirming: boolean;
+  refetch: () => void;
+}
+
+export const useUpgrade = (): UpgradeHookResult => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { address } = useAccount();
+  const queryClient = useQueryClient();
 
   const { writeContract, data: hash, error: writeError, isPending } = useWriteContract();
 
@@ -45,6 +58,35 @@ export const useUpgrade = () => {
     }
   }, [isSuccess, writeError]);
 
+  // Handle transaction success
+  React.useEffect(() => {
+    if (isSuccess && hash) {
+      contractToasts.transactionSuccess(hash);
+      // Note: We don't know the exact rarity here, so we'll use generic success message
+      upgradeToasts.upgraded(0, 0); // 0 indicates unknown rarity
+      
+      // Invalidate all contract queries to refresh data
+      queryClient.invalidateQueries({
+        queryKey: ['readContract'],
+      });
+    }
+  }, [isSuccess, hash, queryClient]);
+
+  // Handle transaction errors
+  React.useEffect(() => {
+    if (writeError) {
+      if (isUserCancellation(writeError)) {
+        // User cancelled - don't show error, just reset state
+        console.log('User cancelled upgrade transaction');
+        setError(null);
+      } else {
+        // Real error - show toast and set error state
+        contractToasts.transactionError(writeError.message);
+        setError(writeError.message);
+      }
+    }
+  }, [writeError]);
+
   const upgrade = async (fromTokenId: number, toTokenId: number): Promise<UpgradeResult> => {
     if (!address) {
       return {
@@ -57,6 +99,7 @@ export const useUpgrade = () => {
     try {
       setIsLoading(true);
       setError(null);
+      upgradeToasts.upgrading();
 
       console.log(`Upgrading from Rarity ${fromTokenId} to Rarity ${toTokenId}`);
 
@@ -90,6 +133,7 @@ export const useUpgrade = () => {
       }
       
       setError(errorMessage);
+      upgradeToasts.upgradeError(errorMessage);
       return {
         success: false,
         error: errorMessage,
@@ -98,15 +142,14 @@ export const useUpgrade = () => {
     }
   };
 
-  // Handle write contract errors
-  if (writeError && !isUserCancellation(writeError)) {
-    console.error('Upgrade write error:', writeError);
-    setError(writeError.message);
-  } else if (writeError && isUserCancellation(writeError)) {
-    // User cancelled - don't show error, just reset state
-    console.log('User cancelled upgrade transaction');
-    setError(null);
-  }
+
+  // Refetch function that invalidates all contract queries
+  const refetch = React.useCallback(() => {
+    console.log('Refetching upgrade data...');
+    queryClient.invalidateQueries({
+      queryKey: ['readContract'],
+    });
+  }, [queryClient]);
 
   return {
     upgrade,
@@ -115,5 +158,6 @@ export const useUpgrade = () => {
     hash,
     isSuccess,
     isConfirming,
+    refetch,
   };
 };

@@ -69,17 +69,19 @@ export const useRarityBalances = (): RarityBalancesResult => {
 
       return {
         tokenId,
-        balance,
+        balance: balance as bigint | undefined,
         level: tokenId,
-        canUpgrade: (balance ?? BigInt(0)) >= BigInt(2), // Can upgrade if we have 2 or more tokens
+        canUpgrade: ((balance as bigint | undefined) ?? BigInt(0)) >= BigInt(2), // Can upgrade if we have 2 or more tokens
       };
     });
   }, [address, balances]);
 
   // Refetch function that calls refetch on all balance calls
   const refetch = React.useCallback(() => {
-    balanceCalls.forEach(call => call.refetch());
-  }, [balanceCalls]);
+    // Use a more stable approach by calling refetch on the individual calls
+    const calls = [rarity1, rarity2, rarity3, rarity4, rarity5, rarity6, rarity7, rarity8, rarity9, rarity10, rarity11, rarity12, rarity13];
+    calls.forEach(call => call.refetch());
+  }, []);
 
   return {
     rarities,

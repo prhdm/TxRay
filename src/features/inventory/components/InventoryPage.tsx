@@ -10,16 +10,31 @@ import { useAuth } from "@/features/auth/lib/AuthContext";
 import { useRarityBalances } from "@/hooks/useRarityBalances";
 import { useUpgrade } from "@/hooks/useUpgrade";
 import { useMintStats } from "@/hooks/useMintStats";
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useEffect } from "react";
 
 export default function InventoryPage() {
   const { isAuthenticated, user } = useAuth();
-  const { mint, isLoading, error, isSuccess, hash } = useMint();
+  const { mint, isLoading, error, isSuccess, hash, refetch: refetchMint } = useMint();
   const { rarities, isLoading: raritiesLoading, refetch: refetchRarities } = useRarityBalances();
-  const { upgrade, isLoading: upgradeLoading, error: upgradeError, isSuccess: upgradeSuccess, hash: upgradeHash } = useUpgrade();
-  const { totalMinted, totalSupply, totalBurned, availableToMint, userMintCount, userCanMint, isLoading: mintStatsLoading } = useMintStats();
+  const { upgrade, isLoading: upgradeLoading, error: upgradeError, isSuccess: upgradeSuccess, hash: upgradeHash, refetch: refetchUpgrade } = useUpgrade();
+  const { totalMinted, totalSupply, totalBurned, availableToMint, userMintCount, userCanMint, isLoading: mintStatsLoading, refetch: refetchMintStats } = useMintStats();
 
-  // No notification handling - let the hooks handle cancellation internally
+  // Refetch data when transactions succeed
+  useEffect(() => {
+    if (isSuccess) {
+      console.log('Mint transaction succeeded, refetching data...');
+      refetchRarities();
+      refetchMintStats();
+    }
+  }, [isSuccess, refetchRarities, refetchMintStats]);
+
+  useEffect(() => {
+    if (upgradeSuccess) {
+      console.log('Upgrade transaction succeeded, refetching data...');
+      refetchRarities();
+      refetchMintStats();
+    }
+  }, [upgradeSuccess, refetchRarities, refetchMintStats]);
 
   // Create all 13 rarity cards (show all even when not authenticated)
   const allRarityCards = useMemo(() => {
@@ -36,7 +51,7 @@ export default function InventoryPage() {
         isSpecial: level === 13, // Mark rarity 13 as special
       };
     });
-  }, [rarities, isAuthenticated]);
+  }, [rarities]);
 
   // Separate normal and special cards
   const normalCards = useMemo(() => allRarityCards.filter(card => !card.isSpecial), [allRarityCards]);
@@ -77,7 +92,7 @@ export default function InventoryPage() {
       console.error("Mint error:", error);
       // Error notifications are handled by useEffect hooks
     }
-  }, [isAuthenticated, mint]);
+  }, [mint]);
 
   return (
     <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">

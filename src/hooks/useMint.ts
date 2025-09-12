@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi';
 import { useAccount } from 'wagmi';
+import { useQueryClient } from '@tanstack/react-query';
 import { contractConfig } from '@/lib/contract';
 import { taikoHekla } from '@/lib/rainbowkit';
+import { mintToasts, contractToasts } from '@/lib/toast';
 
 export interface MintResult {
   success: boolean;
@@ -11,10 +13,21 @@ export interface MintResult {
   isLoading: boolean;
 }
 
-export const useMint = () => {
+export interface MintHookResult {
+  mint: () => Promise<MintResult>;
+  isLoading: boolean;
+  error: string | null;
+  hash: `0x${string}` | undefined;
+  isSuccess: boolean;
+  isConfirming: boolean;
+  refetch: () => void;
+}
+
+export const useMint = (): MintHookResult => {
   const { address, chainId } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   
   const { writeContract, data: hash, error: writeError, isPending } = useWriteContract();
   const { switchChain } = useSwitchChain();
@@ -48,6 +61,35 @@ export const useMint = () => {
     }
   }, [isSuccess, writeError]);
 
+  // Handle transaction success
+  React.useEffect(() => {
+    if (isSuccess && hash) {
+      contractToasts.transactionSuccess(hash);
+      // Note: We don't know the rarity here, so we'll use a generic success message
+      mintToasts.minted(0); // 0 indicates unknown rarity
+      
+      // Invalidate all contract queries to refresh data
+      queryClient.invalidateQueries({
+        queryKey: ['readContract'],
+      });
+    }
+  }, [isSuccess, hash, queryClient]);
+
+  // Handle transaction errors
+  React.useEffect(() => {
+    if (writeError) {
+      if (isUserCancellation(writeError)) {
+        // User cancelled - don't show error, just reset state
+        console.log('User cancelled mint transaction');
+        setError(null);
+      } else {
+        // Real error - show toast and set error state
+        contractToasts.transactionError(writeError.message);
+        setError(writeError.message);
+      }
+    }
+  }, [writeError]);
+
   const mint = async (): Promise<MintResult> => {
     if (!address) {
       return {
@@ -60,6 +102,7 @@ export const useMint = () => {
     try {
       setIsLoading(true);
       setError(null);
+      mintToasts.minting();
 
       // Check if we're on the correct chain
       if (chainId !== taikoHekla.id) {
@@ -68,6 +111,7 @@ export const useMint = () => {
         } catch (switchError) {
           const errorMessage = switchError instanceof Error ? switchError.message : 'Failed to switch chain';
           setError(errorMessage);
+          mintToasts.mintError(errorMessage);
           return {
             success: false,
             error: errorMessage,
@@ -112,6 +156,7 @@ export const useMint = () => {
       }
       
       setError(errorMessage);
+      mintToasts.mintError(errorMessage);
       return {
         success: false,
         error: errorMessage,
@@ -120,15 +165,14 @@ export const useMint = () => {
     }
   };
 
-  // Handle write contract errors
-  if (writeError && !isUserCancellation(writeError)) {
-    console.error('Mint write error:', writeError);
-    setError(writeError.message);
-  } else if (writeError && isUserCancellation(writeError)) {
-    // User cancelled - don't show error, just reset state
-    console.log('User cancelled mint transaction');
-    setError(null);
-  }
+
+  // Refetch function that invalidates all contract queries
+  const refetch = React.useCallback(() => {
+    console.log('Refetching mint data...');
+    queryClient.invalidateQueries({
+      queryKey: ['readContract'],
+    });
+  }, [queryClient]);
 
   return {
     mint,
@@ -137,5 +181,6 @@ export const useMint = () => {
     hash,
     isSuccess,
     isConfirming,
+    refetch,
   };
 };

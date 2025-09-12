@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useWalletAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { authToasts } from '@/lib/toast';
 
 interface AuthContextType {
   user: {
@@ -92,10 +93,10 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
   });
 
   const resetAuthFlow = useCallback(() => {
-    console.log('AuthContext: resetAuthFlow called, current state:', authFlowState);
+    console.log('AuthContext: resetAuthFlow called');
     setAuthFlowState('idle');
     console.log('AuthContext: authFlowState set to idle');
-  }, [authFlowState]);
+  }, []);
 
   const startConnectionAttempt = useCallback(() => {
     console.log('AuthContext: startConnectionAttempt called, setting state to connecting');
@@ -158,6 +159,8 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
             const deserializedUserData = deserializeUserData(userData);
             console.log('Restoring user from localStorage:', deserializedUserData);
             setUser(deserializedUserData);
+            // Set authFlowState to completed since we have valid user data
+            setAuthFlowState('completed');
             setIsLoading(false);
             return;
           } catch (parseError) {
@@ -170,6 +173,8 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           setUser(session.user);
+          // Set authFlowState to completed for Supabase session as well
+          setAuthFlowState('completed');
         }
       } catch (error) {
         console.error('Error checking session:', error);
@@ -185,8 +190,10 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
           setUser(session.user);
+          setAuthFlowState('completed');
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
+          setAuthFlowState('idle');
         }
         setIsLoading(false);
       }
@@ -199,6 +206,7 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
     try {
       setAuthFlowState('network_check');
       setIsLoading(true);
+      authToasts.connecting();
 
       // First try silent reconnection
       console.log('Attempting silent reconnection for address:', address);
@@ -221,6 +229,7 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
         }
 
         console.log('User state updated via silent reconnection - contract data will be fetched separately');
+        authToasts.connected(address);
         return { success: true };
       } else if (silentResult.success) {
         console.log('Silent reconnection returned success but incomplete user data:', silentResult.user);
@@ -235,11 +244,13 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
       if (!result.success && result.error === 'CHAIN_SWITCH_REQUIRED') {
         console.log('Chain switch required, switching to Taiko Hekla');
         setAuthFlowState('network_switch');
+        authToasts.networkSwitch();
         
         const switchResult = await switchToTaikoHekla();
         if (!switchResult.success) {
           console.error('Chain switch failed:', switchResult.error);
           setAuthFlowState('idle');
+          authToasts.authError(switchResult.error || 'Failed to switch network');
           return { success: false, error: switchResult.error || 'Failed to switch network' };
         }
 
@@ -249,6 +260,8 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
         // Now try authentication again
         console.log('Chain switched successfully, retrying authentication');
         setAuthFlowState('signing');
+        authToasts.networkSwitched();
+        authToasts.signing();
         const retryResult = await walletAuthenticate(address);
 
         if (retryResult.success && retryResult.user && retryResult.user.id && retryResult.user.wallet_address) {
@@ -268,10 +281,12 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
           }
 
           console.log('User state updated after chain switch - contract data will be fetched separately');
+          authToasts.authenticated();
           return { success: true };
         } else {
           console.error('Authentication failed after chain switch:', retryResult.error);
           setAuthFlowState('idle');
+          authToasts.authError(retryResult.error || 'Authentication failed after network switch');
           return { success: false, error: retryResult.error || 'Authentication failed after network switch' };
         }
       } else if (result.success && result.user && result.user.id && result.user.wallet_address) {
@@ -291,16 +306,19 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
         }
 
         console.log('User state updated - contract data will be fetched separately, isAuthenticated should now be:', !!result.user);
+        authToasts.authenticated();
         return { success: true };
       } else {
         console.error('Authentication failed or incomplete user data:', result.error, result.user);
         setAuthFlowState('idle');
+        authToasts.authError(result.error || 'Authentication failed');
         return { success: false, error: result.error || 'Authentication failed' };
       }
     } catch (error) {
       console.error('Authentication error:', error);
       setAuthFlowState('idle');
       const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      authToasts.authError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
       setIsLoading(false);
@@ -319,6 +337,7 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
 
       // Clear local user state
       setUser(null);
+      authToasts.logout();
 
       // Clear persisted user data
       localStorage.removeItem('txray_user');
@@ -357,7 +376,7 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
 
   const fetchContractData = useCallback(async () => {
     // Only fetch contract data if user is fully authenticated
-    if (!isAuthenticated || !user?.wallet_address) {
+    if (!user?.id || !user?.wallet_address || authFlowState !== 'completed') {
       console.error('User not fully authenticated, cannot fetch contract data');
       return;
     }
@@ -390,11 +409,11 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Failed to fetch contract data:', error);
     }
-  }, [user, isAuthenticated, serializeUserData]);
+  }, [user, authFlowState, serializeUserData]);
 
   const refreshContractData = useCallback(async () => {
     // Only refresh contract data if user is fully authenticated
-    if (!isAuthenticated || !user?.wallet_address) {
+    if (!user?.id || !user?.wallet_address || authFlowState !== 'completed') {
       console.error('User not fully authenticated, cannot refresh contract data');
       return;
     }
@@ -419,7 +438,7 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Failed to refresh contract data:', error);
     }
-  }, [user, isAuthenticated, serializeUserData]);
+  }, [user, authFlowState, serializeUserData]);
 
   const value = useMemo(() => ({
     user,
@@ -433,7 +452,7 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
     updateUser,
     fetchContractData,
     refreshContractData,
-  }), [user, isAuthenticated, isLoading, authFlowState, authenticate, signOut, resetAuthFlow, startConnectionAttempt, updateUser, fetchContractData, refreshContractData]);
+  }), [user, isLoading, authFlowState, authenticate, signOut, resetAuthFlow, startConnectionAttempt, updateUser, fetchContractData, refreshContractData]);
 
   return (
     <AuthContext.Provider value={value}>

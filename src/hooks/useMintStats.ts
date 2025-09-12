@@ -1,4 +1,6 @@
+import React from 'react';
 import { useReadContract, useAccount } from 'wagmi';
+import { useQueryClient } from '@tanstack/react-query';
 import { contractConfig } from '@/lib/contract';
 
 export interface MintStats {
@@ -10,11 +12,12 @@ export interface MintStats {
   userCanMint: number;
   isLoading: boolean;
   error: string | null;
+  refetch: () => void;
 }
 
 export const useMintStats = (): MintStats => {
   const { address } = useAccount();
-
+  const queryClient = useQueryClient();
   // Get total minted count
   const { 
     data: mintGlobalCount, 
@@ -56,41 +59,64 @@ export const useMintStats = (): MintStats => {
     },
   });
 
+  // Get user's burn count
+  const { 
+    data: userBurnCount, 
+    isLoading: isUserBurnCountLoading, 
+    error: userBurnCountError 
+  } = useReadContract({
+    ...contractConfig,
+    functionName: 'burnCount',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address,
+      refetchInterval: 60000, // Refetch every 60 seconds to reduce re-renders
+    },
+  });
+
   const totalMinted = mintGlobalCount ? Number(mintGlobalCount) : 0;
-  const totalSupply = config ? Number(config[6]) : 0; // maxMintCount is at index 6
+  const totalSupply = config && Array.isArray(config) && config[6] ? Number(config[6]) : 0; // maxMintCount is at index 6
   const userMintCountNum = userMintCount ? Number(userMintCount) : 0;
+  const userBurnCountNum = userBurnCount ? Number(userBurnCount) : 0;
   
-  // Calculate total burned: totalMinted - currentSupply
-  // Since we can't easily get current supply, we'll use totalSupply as the limit
-  // and calculate burns as: totalMinted - (totalSupply - availableToMint)
-  // For now, let's assume burns = totalMinted - totalSupply (if totalMinted > totalSupply)
-  const totalBurned = Math.max(0, totalMinted - totalSupply);
+  // Extract mint factor and mint limit from config
+  const restoreMintFactor = config && Array.isArray(config) && config[2] ? Number(config[2]) : 3; // restoreMintFactor is at index 2
+  const mintLimit = config && Array.isArray(config) && config[7] ? Number(config[7]) : 6; // mintLimit is at index 7
   
-  // Calculate available mints using the new formula:
-  // available = Math.max(0, 5 + 5*Math.floor(totalBurn/3) - totalMint)
-  // This means:
-  // - Base available mints: 5
-  // - Bonus mints: 5 for every 3 tokens burned (5 * Math.floor(totalBurn/3))
-  // - Subtract total minted to get remaining available
-  // - Ensure result is never negative
-  const availableToMint = Math.max(0, 5 + 5 * Math.floor(totalBurned / 3) - totalMinted);
+  // Calculate available mints using the formula:
+  // available = Lim + Lim * Floor(mintCount/mintFactor) - mintCount
+  // Where:
+  // - Lim = mintLimit (base available mints)
+  // - mintFactor = restoreMintFactor (factor for bonus mints)
+  // - mintCount = userBurnCount (tokens burned by user)
+  const availableToMint = Math.max(0, mintLimit + mintLimit * Math.floor(userBurnCountNum / restoreMintFactor) - totalMinted);
   
-  // Calculate how many tokens the user can mint
-  // If they've minted 5, they need to burn 3 to mint again
-  // So they can mint: 5 - (userMintCount % 5) tokens
-  const userCanMint = userMintCountNum >= 5 ? 0 : 5 - userMintCountNum;
+  // Calculate how many tokens the user can mint based on their burn count
+  // Formula: Lim + Lim * Floor(burnCount/mintFactor) - userMintCount
+  // This gives the user's personal available mint slots based on their burns
+  const userCanMint = Math.max(0, mintLimit + mintLimit * Math.floor(userBurnCountNum / restoreMintFactor) - userMintCountNum);
   
-  const isLoading = isMintCountLoading || isConfigLoading || isUserMintCountLoading;
-  const error = mintCountError?.message || configError?.message || userMintCountError?.message || null;
+  const isLoading = isMintCountLoading || isConfigLoading || isUserMintCountLoading || isUserBurnCountLoading;
+  const error = mintCountError?.message || configError?.message || userMintCountError?.message || userBurnCountError?.message || null;
+
+  // Refetch function that invalidates all contract queries
+  const refetch = React.useCallback(() => {
+    console.log('Refetching mint stats...');
+    // Invalidate all contract read queries to force refetch
+    queryClient.invalidateQueries({
+      queryKey: ['readContract'],
+    });
+  }, [queryClient]);
 
   return {
     totalMinted,
     totalSupply,
-    totalBurned,
+    totalBurned: userBurnCountNum, // Use user's burn count
     availableToMint,
     userMintCount: userMintCountNum,
     userCanMint,
     isLoading,
     error,
+    refetch,
   };
 };

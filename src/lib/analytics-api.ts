@@ -12,7 +12,7 @@ export interface IndexerSummary {
   // Add any other fields your kpi_summary view returns
 }
 
-export interface TimeseriesDataPoint {
+export interface TimeSeriesDataPoint {
   period: string
   transaction_count: number
   gas_used: string
@@ -163,7 +163,7 @@ class AnalyticsApiClient {
     granularity?: TimeseriesGranularity
     from?: string // ISO date string
     to?: string   // ISO date string
-  } = {}): Promise<TimeseriesDataPoint[]> {
+  } = {}): Promise<TimeSeriesDataPoint[]> {
     const searchParams = new URLSearchParams()
     
     if (params.granularity) {
@@ -179,7 +179,7 @@ class AnalyticsApiClient {
     const query = searchParams.toString()
     const endpoint = query ? `/timeseries?${query}` : '/timeseries'
     
-    return this.request<TimeseriesDataPoint[]>(endpoint)
+    return this.request<TimeSeriesDataPoint[]>(endpoint)
   }
 
   /**
@@ -264,7 +264,7 @@ export function transformTransactionForLegacyComponents(tx: IndexerTransaction):
   }
 }
 
-export function transformTimeseriesForLegacyComponents(data: TimeseriesDataPoint[]): any[] {
+export function transformTimeseriesForLegacyComponents(data: TimeSeriesDataPoint[]): any[] {
   return data.map((point, index) => {
     // Ensure we have a valid date
     let date = point.period
