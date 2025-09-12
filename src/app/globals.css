@@ -1,0 +1,76 @@
+@import "../styles/styles.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-space-grotesk), 'Space Grotesk', sans-serif;
+  }
+}
+
+/* Custom Toast Styles */
+@layer components {
+  .toast-custom {
+    @apply font-sans;
+  }
+  
+  .toast-custom [data-sonner-toast] {
+    @apply bg-background text-foreground border-border;
+    @apply shadow-lg backdrop-blur-sm;
+  }
+  
+  .toast-custom [data-sonner-toast][data-type="success"] {
+    @apply border-green-500/20 bg-green-50/50 dark:bg-green-950/20;
+  }
+  
+  .toast-custom [data-sonner-toast][data-type="error"] {
+    @apply border-red-500/20 bg-red-50/50 dark:bg-red-950/20;
+  }
+  
+  .toast-custom [data-sonner-toast][data-type="info"] {
+    @apply border-blue-500/20 bg-blue-50/50 dark:bg-blue-950/20;
+  }
+  
+  .toast-custom [data-sonner-toast][data-type="warning"] {
+    @apply border-yellow-500/20 bg-yellow-50/50 dark:bg-yellow-950/20;
+  }
+  
+  .toast-custom [data-sonner-toast][data-type="loading"] {
+    @apply border-gray-500/20 bg-gray-50/50 dark:bg-gray-950/20;
+  }
+  
+  .toast-custom [data-sonner-toast] [data-title] {
+    @apply font-semibold text-foreground;
+  }
+  
+  .toast-custom [data-sonner-toast] [data-description] {
+    @apply text-muted-foreground text-sm;
+  }
+  
+  .toast-custom [data-sonner-toast] [data-close-button] {
+    @apply text-muted-foreground hover:text-foreground;
+    @apply hover:bg-muted/50 rounded-md p-1;
+  }
+  
+  .toast-custom [data-sonner-toast] [data-icon] {
+    @apply text-foreground;
+  }
+}

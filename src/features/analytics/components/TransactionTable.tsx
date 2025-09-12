@@ -1,0 +1,305 @@
+'use client'
+
+import { useState, useMemo } from 'react'
+import { Button, Badge } from '@/ui'
+import { ExternalLink, ChevronUp, ChevronDown, ChevronsLeft, ChevronsRight, Loader2 } from 'lucide-react'
+import { Transaction } from '@/features/analytics/lib/AnalyticsContext'
+import { formatDistanceToNow } from 'date-fns'
+
+interface TransactionTableProps {
+  transactions: Transaction[]
+  onLoadMore: () => Promise<void>
+  hasMore: boolean
+  isLoading: boolean
+}
+
+type SortField = 'value' | 'method' | 'timestamp'
+type SortDirection = 'asc' | 'desc'
+
+export function TransactionTable({
+  transactions,
+  onLoadMore,
+  hasMore,
+  isLoading
+}: TransactionTableProps) {
+  const [sortField, setSortField] = useState<SortField>('timestamp')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  const itemsPerPage = 5
+
+  // Sorting function
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      // New field, default to descending
+      setSortField(field)
+      setSortDirection('desc')
+    }
+    setCurrentPage(1) // Reset to first page when sorting
+  }
+
+  // Sorted and paginated transactions
+  const processedTransactions = useMemo(() => {
+    // Sort transactions
+    const sorted = [...transactions].sort((a, b) => {
+      let aValue: any, bValue: any
+
+      switch (sortField) {
+        case 'value':
+          aValue = parseFloat(a.value) || 0
+          bValue = parseFloat(b.value) || 0
+          break
+        case 'method':
+          aValue = a.method || ''
+          bValue = b.method || ''
+          break
+        case 'timestamp':
+          aValue = new Date(a.timestamp).getTime()
+          bValue = new Date(b.timestamp).getTime()
+          break
+        default:
+          return 0
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+
+    return sorted
+  }, [transactions, sortField, sortDirection])
+
+  // Paginate transactions
+  const totalPages = Math.ceil(processedTransactions.length / itemsPerPage)
+  const paginatedTransactions = processedTransactions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  // Pagination controls
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)))
+  }
+
+  const handleLoadMore = async () => {
+    setLoadingMore(true)
+    await onLoadMore()
+    setLoadingMore(false)
+  }
+
+  // Sort indicator component
+  const SortIndicator = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return null
+    return sortDirection === 'asc' ?
+      <ChevronUp className="inline h-4 w-4 ml-1" /> :
+      <ChevronDown className="inline h-4 w-4 ml-1" />
+  }
+
+  const getStatusBadge = (status: number | null) => {
+    if (status === null) return <Badge variant="secondary">Pending</Badge>
+    if (status === 1) return <Badge variant="default">Success</Badge>
+    return <Badge variant="destructive">Failed</Badge>
+  }
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`
+  }
+
+  const formatValue = (value: string) => {
+    const num = parseFloat(value)
+    if (num === 0) return '0 ETH'
+    if (num < 0.001) return '< 0.001 ETH'
+    return `${num.toFixed(4)} ETH`
+  }
+
+  const getExplorerUrl = (hash: string) => {
+    const explorerUrl = process.env.NEXT_PUBLIC_EXPLORER_URL!
+    return `${explorerUrl}/tx/${hash}`
+  }
+
+  if (transactions.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No transactions found
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Table */}
+      <div className="border rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-medium">Transaction</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">From</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">To</th>
+                <th
+                  className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-muted/70 transition-colors"
+                  onClick={() => handleSort('value')}
+                >
+                  Value <SortIndicator field="value" />
+                </th>
+                <th
+                  className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-muted/70 transition-colors"
+                  onClick={() => handleSort('method')}
+                >
+                  Method <SortIndicator field="method" />
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+                <th
+                  className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-muted/70 transition-colors"
+                  onClick={() => handleSort('timestamp')}
+                >
+                  Time <SortIndicator field="timestamp" />
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {paginatedTransactions.map((tx) => (
+                <tr key={tx.hash} className="hover:bg-muted/30">
+                  <td className="px-4 py-3">
+                    <div className="font-mono text-sm">
+                      {formatAddress(tx.hash)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Block #{tx.block_number.toLocaleString()}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="font-mono text-sm">
+                      {formatAddress(tx.from)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="font-mono text-sm">
+                      {tx.to ? formatAddress(tx.to) : 'Contract Deploy'}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="font-mono text-sm">
+                      {formatValue(tx.value)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {tx.method ? (
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {tx.method}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {getStatusBadge(tx.status)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-sm">
+                      {formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true })}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.open(getExplorerUrl(tx.hash), '_blank')}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronDown className="h-4 w-4 rotate-90" />
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronDown className="h-4 w-4 -rotate-90" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(totalPages)}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Load More for Additional Data */}
+      {hasMore && processedTransactions.length >= currentPage * itemsPerPage && (
+        <div className="flex justify-center">
+          <Button
+            onClick={handleLoadMore}
+            disabled={loadingMore || isLoading}
+            variant="outline"
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <ChevronDown className="mr-2 h-4 w-4" />
+                Load More Transactions
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="text-sm text-muted-foreground text-center">
+        Showing {paginatedTransactions.length} of {processedTransactions.length} transactions
+        {hasMore && ' • Load more to see additional transactions'}
+      </div>
+    </div>
+  )
+}
+
+
