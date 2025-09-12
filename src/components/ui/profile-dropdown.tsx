@@ -1,5 +1,7 @@
 import * as React from "react"
 import { cn } from "./lib/utils"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./dialog"
+import { Button } from "./button"
 
 export interface ProfileDropdownProps extends React.HTMLAttributes<HTMLDivElement> {
   userAddress?: string
@@ -22,6 +24,23 @@ const ProfileDropdown = React.forwardRef<HTMLDivElement, ProfileDropdownProps>(
     ...props 
   }, ref) => {
     const displayName = userName || (userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : 'User');
+    const [showLogoutDialog, setShowLogoutDialog] = React.useState(false);
+
+    const handleLogoutClick = () => {
+      setShowLogoutDialog(true);
+      onToggle?.(); // Close dropdown when showing dialog
+    };
+
+    const handleLogoutConfirm = async () => {
+      setShowLogoutDialog(false);
+      if (onLogout) {
+        await onLogout();
+      }
+    };
+
+    const handleLogoutCancel = () => {
+      setShowLogoutDialog(false);
+    };
 
     return (
       <div ref={ref} className={cn("relative", className)} {...props}>
@@ -72,7 +91,7 @@ const ProfileDropdown = React.forwardRef<HTMLDivElement, ProfileDropdownProps>(
               
               {/* Logout Option */}
               <button
-                onClick={onLogout}
+                onClick={handleLogoutClick}
                 className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-muted transition-colors duration-200 flex items-center space-x-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,6 +102,34 @@ const ProfileDropdown = React.forwardRef<HTMLDivElement, ProfileDropdownProps>(
             </div>
           </div>
         )}
+
+        {/* Logout Confirmation Dialog */}
+        <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Confirm Logout</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to logout? You will need to reconnect your wallet to access your account again.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={handleLogoutCancel}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleLogoutConfirm}
+                className="flex-1"
+              >
+                Logout
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     )
   }

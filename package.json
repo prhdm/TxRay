@@ -23,6 +23,7 @@
     "@radix-ui/react-label": "^2.0.2",
     "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-tooltip": "^1.2.8",
     "@rainbow-me/rainbowkit": "^2.2.8",
     "@supabase/supabase-js": "^2.57.0",
     "@tanstack/react-query": "^5.86.0",

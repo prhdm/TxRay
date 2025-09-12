@@ -2,9 +2,10 @@
 
 import { 
   Header,
-  Footer
+  MobileHeader,
+  Footer,
+  Logo
 } from "@/ui";
-import Image from "next/image";
 import { NavigationProvider, useNavigation, type NavigationPage } from "@/features/navigation/lib/NavigationContext";
 import { useAuth } from "@/features/auth/lib/AuthContext";
 import { useNetworkSwitch } from "@/hooks/useNetworkSwitch";
@@ -23,6 +24,7 @@ function AppContent() {
     targetChainName
   } = useNetworkSwitch();
   const [showNetworkModal, setShowNetworkModal] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const lastAuthAttemptRef = useRef<number>(0);
   const authInProgressRef = useRef<boolean>(false);
 
@@ -175,20 +177,14 @@ function AppContent() {
   }, [setCurrentPage]);
 
 
-  const handleSubscribe = useCallback((email: string) => {
-    console.log(`Subscribing email: ${email}`);
-    // Add your newsletter subscription logic here
-  }, []);
-
-  const handlePrivacyPolicyClick = useCallback(() => {
-    console.log("Privacy Policy clicked");
-    // Add your privacy policy navigation logic here
-  }, []);
-
 
   const handleNavigationChange = useCallback((page: string) => {
     setCurrentPage(page.toLowerCase() as NavigationPage);
   }, [setCurrentPage]);
+
+  const handleMobileMenuToggle = useCallback(() => {
+    setIsMobileMenuOpen(prev => !prev);
+  }, []);
 
   const renderCurrentPage = useCallback(() => {
     switch (currentPage) {
@@ -205,40 +201,65 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <Header
-        logo={
-          <Image
-            src="/logo.svg"
-            alt="Logo"
-            width={100}
-            height={100}
-            className="w-12 h-12"
-          />
-        }
-        brandName="logoipsum"
-        navigationItems={[
-          { label: "Inventory" },
-          { label: "Analytics" }
-        ]}
-        activeNavigation={
-          currentPage === 'inventory' ? 'Inventory' :
-          currentPage === 'analytics' ? 'Analytics' :
-          currentPage === 'profile' ? 'Profile' : undefined
-        }
-        onNavigationChange={handleNavigationChange}
-        onWalletConnect={handleWalletConnect}
-        onAuthenticated={handleAuthenticated}
-        onLogout={handleLogout}
-        onProfileClick={handleProfileClick}
-        user={user ? {
-          address: user.wallet_address || '',
-          username: user.username
-        } : null}
-        authFlowState={authFlowState}
-        onResetAuthFlow={resetAuthFlow}
-        onStartConnectionAttempt={startConnectionAttempt}
-      />
+      {/* Desktop Header - Hidden on mobile */}
+      <div className="hidden lg:block">
+        <Header
+          logo={<Logo size="lg" />}
+          brandName="logoipsum"
+          navigationItems={[
+            { label: "Inventory" },
+            { label: "Analytics" }
+          ]}
+          activeNavigation={
+            currentPage === 'inventory' ? 'Inventory' :
+            currentPage === 'analytics' ? 'Analytics' :
+            currentPage === 'profile' ? 'Profile' : undefined
+          }
+          onNavigationChange={handleNavigationChange}
+          onWalletConnect={handleWalletConnect}
+          onAuthenticated={handleAuthenticated}
+          onLogout={handleLogout}
+          onProfileClick={handleProfileClick}
+          user={user ? {
+            address: user.wallet_address || '',
+            username: user.username
+          } : null}
+          authFlowState={authFlowState}
+          onResetAuthFlow={resetAuthFlow}
+          onStartConnectionAttempt={startConnectionAttempt}
+        />
+      </div>
+
+      {/* Mobile Header - Hidden on desktop */}
+      <div className="lg:hidden">
+        <MobileHeader
+          logo={<Logo size="md" />}
+          brandName="logoipsum"
+          navigationItems={[
+            { label: "Inventory" },
+            { label: "Analytics" }
+          ]}
+          activeNavigation={
+            currentPage === 'inventory' ? 'Inventory' :
+            currentPage === 'analytics' ? 'Analytics' :
+            currentPage === 'profile' ? 'Profile' : undefined
+          }
+          onNavigationChange={handleNavigationChange}
+          onWalletConnect={handleWalletConnect}
+          onAuthenticated={handleAuthenticated}
+          onLogout={handleLogout}
+          onProfileClick={handleProfileClick}
+          user={user ? {
+            address: user.wallet_address || '',
+            username: user.username
+          } : null}
+          authFlowState={authFlowState}
+          onResetAuthFlow={resetAuthFlow}
+          onStartConnectionAttempt={startConnectionAttempt}
+          isMenuOpen={isMobileMenuOpen}
+          onMenuToggle={handleMobileMenuToggle}
+        />
+      </div>
 
       {/* Network Switch Modal */}
       {showNetworkModal && (
@@ -270,17 +291,12 @@ function AppContent() {
 
 
       {/* Dynamic Page Content */}
-      <div className="flex-1">
+      <div className="flex-1 overflow-x-hidden">
         {renderCurrentPage()}
       </div>
 
       {/* Footer */}
-      <Footer
-        logoText="logoipsum"
-        contactEmail="info@txray.xyz"
-        onSubscribe={handleSubscribe}
-        onPrivacyPolicyClick={handlePrivacyPolicyClick}
-      />
+      <Footer />
     </div>
   );
 }

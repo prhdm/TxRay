@@ -57,6 +57,11 @@ export default function InventoryPage() {
   const normalCards = useMemo(() => allRarityCards.filter(card => !card.isSpecial), [allRarityCards]);
   const specialCards = useMemo(() => allRarityCards.filter(card => card.isSpecial), [allRarityCards]);
 
+  // Calculate total cards for tooltip logic
+  const totalCards = useMemo(() => {
+    return rarities.reduce((sum, rarity) => sum + Number(rarity.balance ?? BigInt(0)), 0);
+  }, [rarities]);
+
   const handleUpgrade = useCallback(async (tokenId: number) => {
     try {
       console.log(`Upgrading Rarity ${tokenId} to Rarity ${tokenId + 1}`);
@@ -167,6 +172,7 @@ export default function InventoryPage() {
                     canUpgrade={rarity.canUpgrade}
                     tokenId={rarity.id}
                     isAuthenticated={isAuthenticated}
+                    totalCards={totalCards}
                     onUpgrade={isAuthenticated ? () => handleUpgrade(rarity.id) : undefined}
                     className="w-full"
                   />
@@ -185,6 +191,7 @@ export default function InventoryPage() {
                   tokenId={rarity.id}
                   isSpecial={true}
                   hideUpgradeButton={true} // Hide upgrade button for rarity 13
+                  totalCards={totalCards}
                   className="w-full"
                 />
               </div>

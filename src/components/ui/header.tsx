@@ -3,6 +3,7 @@ import { cn } from "./lib/utils"
 import { useConnectModal, useAccountModal } from '@rainbow-me/rainbowkit'
 import { useAccount, useDisconnect } from 'wagmi'
 import { ProfileDropdown } from './profile-dropdown'
+import { Logo } from './logo'
 
 export interface HeaderProps extends React.HTMLAttributes<HTMLElement> {
   logo?: React.ReactNode
@@ -188,12 +189,7 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
             className="flex items-center space-x-2 hover:opacity-80 transition-opacity cursor-pointer bg-transparent border-none p-0"
             disabled={!onLogoClick}
           >
-            {logo || (
-              <div className="flex items-center space-x-2">
-                <span className="text-2xl font-bold text-foreground">{brandName}</span>
-                <span className="text-lg">⭐</span>
-              </div>
-            )}
+            {logo || <Logo size="lg" />}
           </button>
         </div>
 

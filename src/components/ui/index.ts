@@ -55,6 +55,12 @@ export type { MintStatsCardProps } from "./mint-stats-card"
 export { Header } from "./header"
 export type { HeaderProps } from "./header"
 
+export { MobileHeader } from "./mobile-header"
+export type { MobileHeaderProps } from "./mobile-header"
+
+export { Logo } from "./logo"
+export type { LogoProps } from "./logo"
+
 export { CollectionHeader } from "./collection-header"
 export type { CollectionHeaderProps } from "./collection-header"
 
@@ -66,6 +72,13 @@ export type { ProfileDropdownProps } from "./profile-dropdown"
 
 export { ThemeProvider, useTheme } from "./theme-provider"
 export { ThemeToggle } from "./theme-toggle"
+
+export {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "./tooltip"
 
 // Notification system disabled
 // export { NotificationProvider, useNotification } from "./notification-provider"

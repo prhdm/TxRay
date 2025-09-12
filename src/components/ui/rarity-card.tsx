@@ -1,5 +1,6 @@
 import * as React from "react"
 import { cn } from "./lib/utils"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip"
 
 export interface RarityCardProps extends React.HTMLAttributes<HTMLDivElement> {
   rarity: string
@@ -13,10 +14,11 @@ export interface RarityCardProps extends React.HTMLAttributes<HTMLDivElement> {
   hideCollectedCount?: boolean
   hideUpgradeButton?: boolean
   isAuthenticated?: boolean
+  totalCards?: number
 }
 
 const RarityCard = React.forwardRef<HTMLDivElement, RarityCardProps>(
-  ({ className, rarity, rarityLevel, cardCount, onUpgrade, variant = "default", canUpgrade = cardCount >= 2, tokenId, isSpecial = false, hideCollectedCount = false, hideUpgradeButton = false, isAuthenticated = true, ...props }, ref) => {
+  ({ className, rarity, rarityLevel, cardCount, onUpgrade, variant = "default", canUpgrade = cardCount >= 2, tokenId, isSpecial = false, hideCollectedCount = false, hideUpgradeButton = false, isAuthenticated = true, totalCards = 0, ...props }, ref) => {
     const [imageLoaded, setImageLoaded] = React.useState(false);
     const [imageError, setImageError] = React.useState(false);
 
@@ -63,25 +65,71 @@ const RarityCard = React.forwardRef<HTMLDivElement, RarityCardProps>(
       return bgColor === "#191A23" ? "#FFFFFF" : "#000000";
     };
 
+    // Tooltip logic
+    const getTooltipMessage = () => {
+      if (!isAuthenticated) {
+        return "Connect your wallet to upgrade";
+      }
+      if (cardCount < 2) {
+        return "You need at least 2 cards to upgrade";
+      }
+      return "";
+    };
+
+    const tooltipMessage = getTooltipMessage();
+    const isUpgradeDisabled = !isAuthenticated || cardCount < 2;
+
 
     return (
-      <div
-        ref={ref}
-        className={cn(
-          "flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6 lg:gap-8 w-full border border-[#191A23] shadow-[0px_5px_0px_#191A23] rounded-3xl sm:rounded-[45px]",
-          isSpecial 
-            ? "p-6 sm:p-8 lg:p-12 min-h-[400px] sm:min-h-[500px] lg:min-h-[600px]" 
-            : "p-4 sm:p-6 lg:p-8 min-h-[300px] sm:min-h-[350px] lg:min-h-[400px]",
-          getCardBackgroundColor() === "#F3F3F3" ? "bg-[#F3F3F3]" : "",
-          getCardBackgroundColor() === "#B9FF66" ? "bg-[#B9FF66]" : "",
-          getCardBackgroundColor() === "#191A23" ? "bg-[#191A23]" : "",
-          className
-        )}
-        {...props}
-      >
-        {/* Left side - Content */}
+      <TooltipProvider>
+        <div
+          ref={ref}
+          className={cn(
+            "flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6 lg:gap-8 w-full border border-[#191A23] shadow-[0px_5px_0px_#191A23] rounded-3xl sm:rounded-[45px]",
+            isSpecial 
+              ? "p-6 sm:p-8 lg:p-12 min-h-[400px] sm:min-h-[500px] lg:min-h-[600px]" 
+              : "p-4 sm:p-6 lg:p-8 min-h-[300px] sm:min-h-[350px] lg:min-h-[400px]",
+            getCardBackgroundColor() === "#F3F3F3" ? "bg-[#F3F3F3]" : "",
+            getCardBackgroundColor() === "#B9FF66" ? "bg-[#B9FF66]" : "",
+            getCardBackgroundColor() === "#191A23" ? "bg-[#191A23]" : "",
+            className
+          )}
+          {...props}
+        >
+        {/* Mobile: Image first, then content */}
+        {/* Desktop: Content first, then image */}
+        
+        {/* Rarity Card Image - Mobile: Top, Desktop: Right */}
         <div className={cn(
-          "flex flex-col justify-center items-center md:items-start w-full md:w-auto md:flex-1",
+          "flex-shrink-0 w-full md:w-auto order-1 md:order-2",
+          isSpecial 
+            ? "md:max-w-[400px] lg:max-w-[500px] xl:max-w-[600px] h-[250px] sm:h-[300px] md:h-[450px] lg:h-[500px] xl:h-[550px]"
+            : "md:max-w-[300px] lg:max-w-[350px] xl:max-w-[400px] h-[180px] sm:h-[220px] md:h-[280px] lg:h-[320px] xl:h-[350px]"
+        )}>
+          <div className="relative w-full h-full md:rounded-2xl md:overflow-hidden md:shadow-lg">
+            <img
+              src={`/rarity-${tokenId || 1}.webp`}
+              alt={`${rarity} Card`}
+              className="w-full h-full object-contain md:rounded-2xl"
+              onError={(e) => {
+                console.error(`Failed to load image: /rarity-${tokenId || 1}.webp`);
+                // Fallback to first rarity card if specific card doesn't exist
+                const target = e.target as HTMLImageElement;
+                if (!target.src.includes('rarity-1.webp')) {
+                  console.log('Falling back to rarity-1.webp');
+                  target.src = '/rarity-1.webp';
+                }
+              }}
+              onLoad={() => {
+                console.log(`Successfully loaded image: /rarity-${tokenId || 1}.webp`);
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Content - Mobile: Bottom, Desktop: Left */}
+        <div className={cn(
+          "flex flex-col justify-center items-center md:items-start w-full md:w-auto md:flex-1 order-2 md:order-1",
           isSpecial ? "gap-6 sm:gap-8 lg:gap-10" : "gap-4 sm:gap-6"
         )}>
           {/* Rarity label */}
@@ -97,7 +145,6 @@ const RarityCard = React.forwardRef<HTMLDivElement, RarityCardProps>(
               {rarity}
             </span>
           </div>
-
 
           {/* Card count - conditionally rendered */}
           {!hideCollectedCount && (
@@ -117,51 +164,33 @@ const RarityCard = React.forwardRef<HTMLDivElement, RarityCardProps>(
 
           {/* Upgrade button - conditionally rendered */}
           {!hideUpgradeButton && (
-            <button
-              onClick={canUpgrade ? onUpgrade : undefined}
-              disabled={!canUpgrade}
-              className={cn(
-                "flex items-center justify-center px-4 sm:px-6 py-3 rounded-xl font-['Space_Grotesk'] font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 w-full min-h-[48px]",
-                isSpecial 
-                  ? "px-6 py-4 text-xl sm:text-2xl lg:text-3xl max-w-[300px] min-h-[60px]" 
-                  : "text-base sm:text-lg max-w-[200px]",
-                getButtonColor() === "#191A23" ? "bg-[#191A23] text-[#FFFFFF] hover:bg-[#2a2b35]" : "bg-[#F3F3F3] text-[#000000] hover:bg-[#e8e8e8]",
-                !canUpgrade && "opacity-50 cursor-not-allowed hover:bg-current"
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={!isUpgradeDisabled ? onUpgrade : undefined}
+                  disabled={isUpgradeDisabled}
+                  className={cn(
+                    "flex items-center justify-center px-4 sm:px-6 py-3 rounded-xl font-['Space_Grotesk'] font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 w-full min-h-[48px]",
+                    isSpecial 
+                      ? "px-6 py-4 text-xl sm:text-2xl lg:text-3xl max-w-[300px] min-h-[60px]" 
+                      : "text-base sm:text-lg max-w-[200px]",
+                    getButtonColor() === "#191A23" ? "bg-[#191A23] text-[#FFFFFF] hover:bg-[#2a2b35]" : "bg-[#F3F3F3] text-[#000000] hover:bg-[#e8e8e8]",
+                    isUpgradeDisabled && "opacity-50 cursor-not-allowed hover:bg-current"
+                  )}
+                >
+                  Upgrade
+                </button>
+              </TooltipTrigger>
+              {tooltipMessage && (
+                <TooltipContent>
+                  <p>{tooltipMessage}</p>
+                </TooltipContent>
               )}
-            >
-              {!isAuthenticated ? "Connect Wallet" : "Upgrade"}
-            </button>
+            </Tooltip>
           )}
         </div>
-
-        {/* Right side - Rarity Card Image */}
-        <div className={cn(
-          "flex-shrink-0 w-full md:w-auto",
-          isSpecial 
-            ? "md:max-w-[400px] lg:max-w-[500px] xl:max-w-[600px] h-[300px] sm:h-[400px] md:h-[450px] lg:h-[500px] xl:h-[550px]"
-            : "md:max-w-[300px] lg:max-w-[350px] xl:max-w-[400px] h-[200px] sm:h-[250px] md:h-[280px] lg:h-[320px] xl:h-[350px]"
-        )}>
-          <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-lg">
-            <img
-              src={`/rarity-${tokenId || 1}.webp`}
-              alt={`${rarity} Card`}
-              className="w-full h-full object-cover rounded-2xl"
-              onError={(e) => {
-                console.error(`Failed to load image: /rarity-${tokenId || 1}.webp`);
-                // Fallback to first rarity card if specific card doesn't exist
-                const target = e.target as HTMLImageElement;
-                if (!target.src.includes('rarity-1.webp')) {
-                  console.log('Falling back to rarity-1.webp');
-                  target.src = '/rarity-1.webp';
-                }
-              }}
-              onLoad={() => {
-                console.log(`Successfully loaded image: /rarity-${tokenId || 1}.webp`);
-              }}
-            />
-          </div>
         </div>
-      </div>
+      </TooltipProvider>
     )
   }
 )
