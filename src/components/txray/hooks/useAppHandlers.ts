@@ -58,7 +58,15 @@ export const useAppHandlers = (
 
         try {
             console.log('Attempting authentication for address:', address);
-            await authState.authenticate(address);
+            const result = await authState.authenticate(address);
+            
+            // Check if authentication failed
+            if (!result.success) {
+                console.log('Authentication failed:', result.error);
+                // Don't show toast here - it's already handled in the authentication hook
+                // The authentication hook will show appropriate toasts for real errors
+                // and silently handle user cancellations
+            }
         } catch (error) {
             console.error('Authentication error in handleAuthenticated:', error);
         } finally {

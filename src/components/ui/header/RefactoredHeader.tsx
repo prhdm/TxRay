@@ -130,6 +130,7 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
 
         // Track modal state to detect when it closes without connecting
         const [wasModalOpen, setWasModalOpen] = React.useState(false);
+        const [modalCloseTimeout, setModalCloseTimeout] = React.useState<NodeJS.Timeout | null>(null);
 
         React.useEffect(() => {
             console.log('Modal state effect:', {connectModalOpen, wasModalOpen, authFlowState, isConnected, address});
@@ -137,6 +138,11 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
             if (connectModalOpen) {
                 console.log('Modal opened, setting wasModalOpen to true');
                 setWasModalOpen(true);
+                // Clear any existing timeout when modal opens
+                if (modalCloseTimeout) {
+                    clearTimeout(modalCloseTimeout);
+                    setModalCloseTimeout(null);
+                }
             } else if (wasModalOpen && !connectModalOpen) {
                 // Modal was open and is now closed
                 console.log('Modal closed, wasModalOpen was true');
@@ -144,7 +150,7 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
 
                 // Only reset if we're still in connecting state and no wallet is connected
                 if (authFlowState === 'connecting' && !isConnected && !address && onResetAuthFlow) {
-                    console.log('Modal closed without connecting, will reset in 1 second');
+                    console.log('Modal closed without connecting, will reset in 500ms');
                     const timeoutId = setTimeout(() => {
                         // Final check before resetting
                         if (authFlowState === 'connecting' && !isConnected && !address) {
@@ -157,9 +163,10 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
                                 address
                             });
                         }
-                    }, 1000);
+                        setModalCloseTimeout(null);
+                    }, 500); // Reduced timeout for faster response
 
-                    return () => clearTimeout(timeoutId);
+                    setModalCloseTimeout(timeoutId);
                 } else {
                     console.log('Not resetting because conditions not met:', {
                         authFlowState,
@@ -169,7 +176,34 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
                     });
                 }
             }
-        }, [connectModalOpen, wasModalOpen, authFlowState, isConnected, address, onResetAuthFlow]);
+        }, [connectModalOpen, wasModalOpen, authFlowState, isConnected, address, onResetAuthFlow, modalCloseTimeout]);
+
+        // Cleanup timeout on unmount
+        React.useEffect(() => {
+            return () => {
+                if (modalCloseTimeout) {
+                    clearTimeout(modalCloseTimeout);
+                }
+            };
+        }, [modalCloseTimeout]);
+
+        // Fallback: Reset connecting state if stuck for too long
+        React.useEffect(() => {
+            if (authFlowState === 'connecting' && onResetAuthFlow) {
+                console.log('Starting fallback timer for connecting state');
+                const fallbackTimeout = setTimeout(() => {
+                    if (authFlowState === 'connecting' && !isConnected && !address) {
+                        console.log('Fallback: Resetting stuck connecting state');
+                        onResetAuthFlow();
+                    }
+                }, 10000); // 10 second fallback
+
+                return () => {
+                    console.log('Clearing fallback timer');
+                    clearTimeout(fallbackTimeout);
+                };
+            }
+        }, [authFlowState, isConnected, address, onResetAuthFlow]);
 
         // Close dropdown when clicking outside
         React.useEffect(() => {

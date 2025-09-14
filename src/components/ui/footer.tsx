@@ -22,7 +22,7 @@ const Footer = React.forwardRef<HTMLElement, FooterProps>(
             >
                 <div className="bg-custom-dark text-white rounded-t-[45px] py-8 px-4 sm:px-6 lg:px-8">
                     {/* Logo */}
-                    <div className="text-center mb-6">
+                    <div className="flex justify-center mb-6">
                         <Logo size="lg" className="text-white"/>
                     </div>
 

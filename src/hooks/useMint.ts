@@ -3,7 +3,7 @@ import {useAccount, useSwitchChain, useWaitForTransactionReceipt, useWriteContra
 import {useQueryClient} from '@tanstack/react-query';
 import {contractConfig} from '@/lib/contract';
 import {taikoHekla} from '@/lib/rainbowkit';
-import {contractToasts, mintToasts} from '@/lib/toast';
+import {contractToasts, mintToasts, toastUtils} from '@/lib/toast';
 
 export interface MintResult {
     success: boolean;
@@ -63,9 +63,8 @@ export const useMint = (): MintHookResult => {
     // Handle transaction success
     React.useEffect(() => {
         if (isSuccess && hash) {
-            contractToasts.transactionSuccess(hash);
-            // Note: We don't know the rarity here, so we'll use a generic success message
-            mintToasts.minted(0); // 0 indicates unknown rarity
+            // Use a generic success message since we don't know the specific rarity
+            toastUtils.success('Mint successful!', 'Successfully minted a new Rarity Card');
 
             // Invalidate all contract queries to refresh data
             queryClient.invalidateQueries({
@@ -79,7 +78,6 @@ export const useMint = (): MintHookResult => {
         if (writeError) {
             if (isUserCancellation(writeError)) {
                 // User cancelled - don't show error, just reset state
-                console.log('User cancelled mint transaction');
                 setError(null);
             } else {
                 // Real error - show toast and set error state
@@ -145,7 +143,6 @@ export const useMint = (): MintHookResult => {
 
             // Check if this is a user cancellation
             if (isUserCancellation(err)) {
-                console.log('User cancelled mint transaction');
                 setError(null);
                 return {
                     success: false,

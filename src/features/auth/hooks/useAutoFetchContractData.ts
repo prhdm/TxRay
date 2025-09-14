@@ -23,7 +23,7 @@ export const useAutoFetchContractData = (
                 isConnected &&
                 connectedAddress &&
                 connectedAddress.toLowerCase() === user.wallet_address.toLowerCase() &&
-                !user.contractData &&
+                (!user.contractData || !user.contractData.balances || Object.keys(user.contractData.balances).length === 0) &&
                 authFlowState === 'completed' &&
                 !isLoading
             ) {

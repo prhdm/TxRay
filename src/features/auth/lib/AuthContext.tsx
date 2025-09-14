@@ -79,7 +79,7 @@ function AuthProviderInner({children}: { children: React.ReactNode }) {
     }, []);
 
     // Initialize effects
-    useAuthSession(setUser, setAuthFlowState, setIsLoading);
+    useAuthSession(setUser, setAuthFlowState, setIsLoading, isLoading);
     useWalletMonitoring(
         user,
         isAuthenticated,

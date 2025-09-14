@@ -1,173 +1,83 @@
 import {useCallback} from 'react';
 import {AuthFlowState, AuthUser} from '../types';
-import {getAuthState, useWalletAuth} from '@/lib/auth';
+import {useWalletAuth} from '@/lib/auth';
 import {authToasts} from '@/lib/toast';
-import {serializeUserData} from '../utils/userSerialization';
 
-/**
- * Hook for handling authentication flow
- */
 export const useAuthentication = (
-    setAuthFlowState: React.Dispatch<React.SetStateAction<AuthFlowState>>,
-    setIsLoading: React.Dispatch<React.SetStateAction<boolean>>,
+    setAuthFlowState: (state: AuthFlowState) => void,
+    setIsLoading: (loading: boolean) => void,
     setUser: React.Dispatch<React.SetStateAction<AuthUser | null>>
 ) => {
-    const {authenticate: walletAuthenticate, switchToTaikoHekla, silentReconnect} = useWalletAuth();
+    const {authenticate} = useWalletAuth();
 
-    const authenticate = useCallback(async (address: string): Promise<{ success: boolean; error?: string }> => {
+    const authenticateUser = useCallback(async (address: string): Promise<{ success: boolean; error?: string }> => {
         try {
-            setAuthFlowState('network_check');
+            setAuthFlowState('authenticating');
             setIsLoading(true);
-            authToasts.connecting();
 
-            // Check if we already have a valid token for this address
-            const authState = await getAuthState();
-            const tokenWalletAddress = authState.tokenWalletAddress;
+            const result = await authenticate(address);
 
-            if (tokenWalletAddress && tokenWalletAddress.toLowerCase() === address.toLowerCase() && authState.hasValidToken) {
-                console.log('Already have valid token for this address, skipping SIWE');
-
-                // We have a valid token for this address, just set user and complete
-                try {
-                    const {bootstrapAuth} = await import('@/lib/auth');
-                    const userData = await bootstrapAuth();
-                    if (userData) {
-                        setUser(userData);
-                        setAuthFlowState('completed');
-
-                        // Persist user data
-                        try {
-                            const serializedData = serializeUserData(userData);
-                            localStorage.setItem('txray_user', JSON.stringify(serializedData));
-                        } catch (storageError) {
-                            console.error('Error persisting user data:', storageError);
-                        }
-
-                        authToasts.connected(address);
-                        return {success: true};
-                    }
-                } catch (error) {
-                    console.error('Failed to get user data despite valid token:', error);
-                    // Fall through to silent reconnection
-                }
-            }
-
-            // First try silent reconnection
-            console.log('Attempting silent reconnection for address:', address);
-            const silentResult = await silentReconnect(address);
-
-            if (silentResult.success && silentResult.user && silentResult.user.id && silentResult.user.wallet_address) {
-                console.log('Silent reconnection successful with complete user data:', silentResult.user);
-
-                // Set user without contract data first - contract data will be fetched separately
-                setAuthFlowState('completed');
-                setUser(silentResult.user);
-
-                // Persist user data to localStorage (without contract data)
-                try {
-                    const serializedData = serializeUserData(silentResult.user);
-                    localStorage.setItem('txray_user', JSON.stringify(serializedData));
-                    console.log('User data persisted to localStorage (contract data will be fetched separately)');
-                } catch (storageError) {
-                    console.error('Error persisting user data:', storageError);
-                }
-
-                console.log('User state updated via silent reconnection - contract data will be fetched separately');
-                authToasts.connected(address);
-                return {success: true};
-            } else if (silentResult.success) {
-                console.log('Silent reconnection returned success but incomplete user data:', silentResult.user);
-                // Fall through to full SIWE authentication
-            }
-
-            // If silent reconnection failed or bootstrap didn't work, proceed with full SIWE
-            console.log('Silent reconnection failed or incomplete, proceeding with full SIWE authentication');
-            const result = await walletAuthenticate(address);
-
-            // Check if we need to switch chains
-            if (!result.success && result.error === 'CHAIN_SWITCH_REQUIRED') {
-                console.log('Chain switch required, switching to Taiko Hekla');
-                setAuthFlowState('network_switch');
-                authToasts.networkSwitch();
-
-                const switchResult = await switchToTaikoHekla();
-                if (!switchResult.success) {
-                    console.error('Chain switch failed:', switchResult.error);
-                    setAuthFlowState('idle');
-                    authToasts.authError(switchResult.error || 'Failed to switch network');
-                    return {success: false, error: switchResult.error || 'Failed to switch network'};
-                }
-
-                // Wait a moment for the chain switch to complete
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                // Now try authentication again
-                console.log('Chain switched successfully, retrying authentication');
-                setAuthFlowState('signing');
-                authToasts.networkSwitched();
-                authToasts.signing();
-                const retryResult = await walletAuthenticate(address);
-
-                if (retryResult.success && retryResult.user && retryResult.user.id && retryResult.user.wallet_address) {
-                    console.log('Authentication successful after chain switch:', retryResult.user);
-
-                    // Set user without contract data first - contract data will be fetched separately
-                    setAuthFlowState('completed');
-                    setUser(retryResult.user);
-
-                    // Persist user data to localStorage (without contract data)
-                    try {
-                        const serializedData = serializeUserData(retryResult.user);
-                        localStorage.setItem('txray_user', JSON.stringify(serializedData));
-                        console.log('User data persisted to localStorage (contract data will be fetched separately)');
-                    } catch (storageError) {
-                        console.error('Error persisting user data:', storageError);
-                    }
-
-                    console.log('User state updated after chain switch - contract data will be fetched separately');
-                    authToasts.authenticated();
-                    return {success: true};
-                } else {
-                    console.error('Authentication failed after chain switch:', retryResult.error);
-                    setAuthFlowState('idle');
-                    authToasts.authError(retryResult.error || 'Authentication failed after network switch');
-                    return {success: false, error: retryResult.error || 'Authentication failed after network switch'};
-                }
-            } else if (result.success && result.user && result.user.id && result.user.wallet_address) {
-                console.log('Full SIWE authentication successful with complete user data:', result.user);
-
-                // Set user without contract data first - contract data will be fetched separately
-                setAuthFlowState('completed');
+            if (result.success && result.user) {
                 setUser(result.user);
-
-                // Persist user data to localStorage (without contract data)
-                try {
-                    const serializedData = serializeUserData(result.user);
-                    localStorage.setItem('txray_user', JSON.stringify(serializedData));
-                    console.log('User data persisted to localStorage (contract data will be fetched separately)');
-                } catch (storageError) {
-                    console.error('Error persisting user data:', storageError);
-                }
-
-                console.log('User state updated - contract data will be fetched separately, isAuthenticated should now be:', !!result.user);
+                setAuthFlowState('completed');
                 authToasts.authenticated();
-                return {success: true};
+                return { success: true };
             } else {
-                console.error('Authentication failed or incomplete user data:', result.error, result.user);
-                setAuthFlowState('idle');
-                authToasts.authError(result.error || 'Authentication failed');
-                return {success: false, error: result.error || 'Authentication failed'};
+                // Check if this is a user cancellation
+                const isUserCancellation = result.error && (
+                    result.error.includes('User cancelled') ||
+                    result.error.includes('User rejected') ||
+                    result.error.includes('User denied') ||
+                    result.error.includes('rejected') ||
+                    result.error.includes('denied') ||
+                    result.error.includes('cancelled') ||
+                    result.error.includes('canceled') ||
+                    result.error.includes('4001') ||
+                    result.error.includes('ACTION_REJECTED')
+                );
+
+                if (isUserCancellation) {
+                    // User cancelled - don't show error toast, just reset state
+                    setAuthFlowState('idle');
+                    return { success: false, error: 'User cancelled authentication' };
+                } else {
+                    // Real error - show toast
+                    authToasts.authError(result.error || 'Authentication failed');
+                    setAuthFlowState('idle');
+                    return { success: false, error: result.error };
+                }
             }
         } catch (error) {
             console.error('Authentication error:', error);
-            setAuthFlowState('idle');
             const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
-            authToasts.authError(errorMessage);
-            return {success: false, error: errorMessage};
+            
+            // Check if this is a user cancellation
+            const isUserCancellation = errorMessage.includes('User cancelled') ||
+                errorMessage.includes('User rejected') ||
+                errorMessage.includes('User denied') ||
+                errorMessage.includes('rejected') ||
+                errorMessage.includes('denied') ||
+                errorMessage.includes('cancelled') ||
+                errorMessage.includes('canceled') ||
+                errorMessage.includes('4001') ||
+                errorMessage.includes('ACTION_REJECTED');
+
+            if (isUserCancellation) {
+                // User cancelled - don't show error toast, just reset state
+                setAuthFlowState('idle');
+                return { success: false, error: 'User cancelled authentication' };
+            } else {
+                // Real error - show toast
+                authToasts.authError(errorMessage);
+                setAuthFlowState('idle');
+                return { success: false, error: errorMessage };
+            }
         } finally {
             setIsLoading(false);
         }
-    }, [walletAuthenticate, switchToTaikoHekla, silentReconnect, setAuthFlowState, setIsLoading, setUser]);
+    }, [authenticate, setAuthFlowState, setIsLoading, setUser]);
 
-    return {authenticate};
+    return {
+        authenticate: authenticateUser,
+    };
 };

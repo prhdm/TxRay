@@ -3,12 +3,14 @@
 import {CollectionHeader, RarityCard} from "@/ui";
 import {useAuth} from "@/features/auth/lib/AuthContext";
 import {useRarityBalances} from "@/hooks/useRarityBalances";
+import {useNavigation} from "@/features/navigation/lib/NavigationContext";
 import {useMemo, useState} from "react";
 import {ChevronDown, ChevronUp} from "lucide-react";
 
 export default function ProfilePage() {
     const {user, updateUser} = useAuth();
     const {rarities, isLoading: raritiesLoading} = useRarityBalances();
+    const {setCurrentPage} = useNavigation();
     // Notification system disabled
     const [isAccountInfoExpanded, setIsAccountInfoExpanded] = useState(true);
 
@@ -177,18 +179,18 @@ export default function ProfilePage() {
                     </>
                 ) : (
                     <div className="text-center py-12">
-                        <div className="text-6xl mb-4">🎴</div>
                         <h3 className="text-xl font-semibold text-foreground mb-2">No Cards Yet</h3>
                         <p className="text-muted-foreground mb-6">
                             You haven&apos;t minted any cards yet. Visit the Inventory page to get started!
                         </p>
                         <button
-                            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                            className="relative px-6 py-2 border border-[#191A23] rounded-md bg-[#B9FF66] text-black font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-[0_4px_0_0_rgba(0,0,0,1)] hover:shadow-[0_6px_0_0_rgba(0,0,0,1)] hover:-translate-y-0.5 overflow-hidden group"
                             onClick={() => {
-                                console.log("Navigate to inventory page to mint cards");
+                                setCurrentPage('inventory');
                             }}
                         >
-                            Go to Inventory
+                            <div className="absolute inset-0 bg-[#B9FF66] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out origin-left"></div>
+                            <span className="relative z-10">Go to Inventory</span>
                         </button>
                     </div>
                 )}

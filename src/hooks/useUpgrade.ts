@@ -24,6 +24,7 @@ export interface UpgradeHookResult {
 export const useUpgrade = (): UpgradeHookResult => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [upgradeParams, setUpgradeParams] = useState<{fromTokenId: number, toTokenId: number} | null>(null);
     const {address} = useAccount();
     const queryClient = useQueryClient();
 
@@ -61,23 +62,25 @@ export const useUpgrade = (): UpgradeHookResult => {
     // Handle transaction success
     React.useEffect(() => {
         if (isSuccess && hash) {
-            contractToasts.transactionSuccess(hash);
-            // Note: We don't know the exact rarity here, so we'll use generic success message
-            upgradeToasts.upgraded(0, 0); // 0 indicates unknown rarity
+            // Use the stored upgrade parameters for the correct rarity display
+            if (upgradeParams) {
+                upgradeToasts.upgraded(upgradeParams.fromTokenId, upgradeParams.toTokenId);
+            } else {
+                upgradeToasts.upgraded(0, 0); // Fallback if params not available
+            }
 
             // Invalidate all contract queries to refresh data
             queryClient.invalidateQueries({
                 queryKey: ['readContract'],
             });
         }
-    }, [isSuccess, hash, queryClient]);
+    }, [isSuccess, hash, queryClient, upgradeParams]);
 
     // Handle transaction errors
     React.useEffect(() => {
         if (writeError) {
             if (isUserCancellation(writeError)) {
                 // User cancelled - don't show error, just reset state
-                console.log('User cancelled upgrade transaction');
                 setError(null);
             } else {
                 // Real error - show toast and set error state
@@ -99,6 +102,7 @@ export const useUpgrade = (): UpgradeHookResult => {
         try {
             setIsLoading(true);
             setError(null);
+            setUpgradeParams({fromTokenId, toTokenId});
             upgradeToasts.upgrading();
 
             console.log(`Upgrading from Rarity ${fromTokenId} to Rarity ${toTokenId}`);
@@ -123,7 +127,6 @@ export const useUpgrade = (): UpgradeHookResult => {
 
             // Check if this is a user cancellation
             if (isUserCancellation(err)) {
-                console.log('User cancelled upgrade transaction');
                 setError(null);
                 return {
                     success: false,

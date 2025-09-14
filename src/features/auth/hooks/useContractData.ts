@@ -17,8 +17,8 @@ export const useContractData = (
             return;
         }
 
-        if (user.contractData) {
-            console.log('Contract data already exists, skipping fetch');
+        if (user.contractData && user.contractData.balances && Object.keys(user.contractData.balances).length > 0) {
+            console.log('Contract data already exists with balances, skipping fetch');
             return;
         }
 

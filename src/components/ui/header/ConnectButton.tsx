@@ -23,7 +23,7 @@ export const ConnectButton: React.FC<ConnectButtonProps> = ({
             onClick={onClick}
             disabled={disabled}
             className={cn(
-                "relative px-4 py-2 border border-foreground rounded-md bg-background text-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-[0_4px_0_0_rgba(0,0,0,1)] hover:shadow-[0_6px_0_0_rgba(0,0,0,1)] hover:-translate-y-0.5 overflow-hidden group",
+                "relative px-4 py-2 border border-foreground rounded-md bg-background text-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-[0_4px_0_0_rgba(0,0,0,1)] hover:shadow-[0_6px_0_0_rgba(0,0,0,1)] hover:-translate-y-0.5 overflow-hidden group min-w-[180px]",
                 disabled && "opacity-50 cursor-not-allowed"
             )}
         >
@@ -36,9 +36,9 @@ export const ConnectButton: React.FC<ConnectButtonProps> = ({
         {waitingForDisconnect ? 'Disconnecting...' :
             connectModalOpen ? 'Connecting...' :
                 authFlowState === 'connecting' ? 'Connecting...' :
-                    authFlowState === 'network_check' ? 'Checking Network...' :
-                        authFlowState === 'network_switch' ? 'Switching Network...' :
-                            authFlowState === 'signing' ? 'Signing Message...' :
+                    authFlowState === 'network_check' ? 'Checking...' :
+                        authFlowState === 'network_switch' ? 'Switching...' :
+                            authFlowState === 'signing' ? 'Signing...' :
                                 authFlowState === 'authenticating' ? 'Authenticating...' :
                                     walletButtonText}
       </span>

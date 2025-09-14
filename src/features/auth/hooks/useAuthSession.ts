@@ -1,4 +1,5 @@
 import {useEffect} from 'react';
+import {useAccount} from 'wagmi';
 import {AuthFlowState, AuthUser} from '../types';
 import {getAuthState} from '@/lib/auth';
 import {supabase} from '@/lib/supabase';
@@ -10,8 +11,10 @@ import {deserializeUserData, serializeUserData} from '../utils/userSerialization
 export const useAuthSession = (
     setUser: React.Dispatch<React.SetStateAction<AuthUser | null>>,
     setAuthFlowState: React.Dispatch<React.SetStateAction<AuthFlowState>>,
-    setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
+    setIsLoading: React.Dispatch<React.SetStateAction<boolean>>,
+    isLoading: boolean
 ) => {
+    const {address: connectedAddress, isConnected} = useAccount();
     // Check for existing session on mount and handle comprehensive auth state
     useEffect(() => {
         const checkSession = async () => {
@@ -20,7 +23,7 @@ export const useAuthSession = (
 
                 // Get comprehensive auth state
                 const authState = await getAuthState();
-                console.log('Auth state:', authState);
+                console.log('Auth state:', authState, 'Wallet state:', {isConnected, connectedAddress});
 
                 // Handle different scenarios
                 if (!authState.hasValidToken && !authState.hasRefreshToken) {
@@ -164,4 +167,46 @@ export const useAuthSession = (
 
         return () => subscription.unsubscribe();
     }, [setUser, setAuthFlowState, setIsLoading]);
+
+    // Handle wallet connection changes after initial session check
+    useEffect(() => {
+        const handleWalletConnectionChange = async () => {
+            if (isLoading) return; // Skip if still loading initial session
+
+            try {
+                const authState = await getAuthState();
+                console.log('Wallet connection changed, checking auth state:', {
+                    isConnected,
+                    connectedAddress,
+                    hasValidToken: authState.hasValidToken,
+                    tokenWalletAddress: authState.tokenWalletAddress
+                });
+
+                // If we have a valid token and wallet is connected with matching address, ensure user is set
+                if (authState.hasValidToken && isConnected && connectedAddress && authState.tokenWalletAddress) {
+                    if (connectedAddress.toLowerCase() === authState.tokenWalletAddress.toLowerCase()) {
+                        // Try to restore user data if not already set
+                        const storedUser = localStorage.getItem('txray_user');
+                        if (storedUser) {
+                            try {
+                                const userData = JSON.parse(storedUser);
+                                const deserializedUserData = deserializeUserData(userData);
+                                if (deserializedUserData?.id && deserializedUserData?.wallet_address) {
+                                    console.log('Restoring user data after wallet connection:', deserializedUserData);
+                                    setUser(deserializedUserData);
+                                    setAuthFlowState('completed');
+                                }
+                            } catch (parseError) {
+                                console.error('Error parsing stored user data after wallet connection:', parseError);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error handling wallet connection change:', error);
+            }
+        };
+
+        handleWalletConnectionChange();
+    }, [isConnected, connectedAddress, isLoading, setUser, setAuthFlowState]);
 };

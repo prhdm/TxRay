@@ -33,6 +33,7 @@ export default function AnalyticsPage() {
                 description="Real-time analytics for Rarity Collections. Track transactions, actions, activity and more."
                 onMint={handleRefresh}
                 isMinting={isRefreshing}
+                isDisabled={!isAuthenticated}
                 buttonText="Refresh"
                 loadingText="Refreshing..."
                 showRefreshIcon={true}

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui'
 import { RefreshCw, TrendingUp, Users, Activity, DollarSign, Zap, Target, Clock, BarChart3, PieChart, Table } from 'lucide-react'
 import { useAnalytics } from '@/features/analytics/lib/AnalyticsContext'
+import { useAuth } from '@/features/auth/lib/AuthContext'
 import { KPICard } from './KPICard'
 import { TransactionChart } from './TransactionChart'
 import { TransactionPieChart } from './TransactionPieChart'
@@ -15,6 +16,7 @@ interface AnalyticsDashboardProps {
 }
 
 export function AnalyticsDashboard({ onRefresh, isRefreshing }: AnalyticsDashboardProps) {
+  const { isAuthenticated } = useAuth()
   const {
     summary,
     dailyStats,
@@ -54,7 +56,7 @@ export function AnalyticsDashboard({ onRefresh, isRefreshing }: AnalyticsDashboa
               The dashboard will show fallback data in the meantime.
             </p>
           </div>
-        <Button onClick={handleRefresh} disabled={refreshing || isRefreshing}>
+        <Button onClick={handleRefresh} disabled={refreshing || isRefreshing || !isAuthenticated}>
           <RefreshCw className={`mr-2 h-4 w-4 ${(refreshing || isRefreshing) ? 'animate-spin' : ''}`} />
           Retry
         </Button>
