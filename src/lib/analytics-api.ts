@@ -4,12 +4,15 @@
 import { getAccessToken } from './auth';
 
 export interface IndexerSummary {
-  total_transactions: number
-  total_gas_used: string
-  total_gas_cost: string
-  first_transaction_date: string
-  last_transaction_date: string
-  // Add any other fields your kpi_summary view returns
+    total_transactions: number
+    total_gas_cost_wei: string
+    total_gas_cost_eth: string
+    first_tx_at: string
+    last_tx_at: string
+    latest_block: number
+    txs_24h: number
+    txs_7d: number
+    avg_gas_per_tx: number
 }
 
 export interface TimeSeriesDataPoint {
@@ -149,59 +152,88 @@ class AnalyticsApiClient {
     }
   }
 
-  /**
-   * Get KPI summary (total transactions, gas, costs, date range)
-   */
-  async getSummary(): Promise<IndexerSummary> {
-    return this.request<IndexerSummary>('/summary')
+    /**
+     * Get KPI summary (total transactions, gas, costs, date range)
+     * @param walletAddress - Optional wallet address to filter by. If not provided, returns global summary.
+     */
+    async getSummary(walletAddress?: string): Promise<IndexerSummary> {
+        const endpoint = walletAddress ? `/summary?wallet=${walletAddress}` : '/summary'
+        const response = await this.request<IndexerSummary | IndexerSummary[]>(endpoint)
+        
+        // Handle array response from wallet-specific queries
+        if (Array.isArray(response)) {
+            if (response.length === 0) {
+                throw new Error('No data found for this wallet address')
+            }
+            return response[0]
+        }
+        
+        return response
+    }
+
+    /**
+     * Get global KPI summary (all wallets)
+     */
+    async getAllSummary(): Promise<IndexerSummary> {
+        return this.request<IndexerSummary>('/all')
+    }
+
+    /**
+     * Get time-series data with specified granularity and date range
+     * @param params - Query parameters including optional wallet address
+     */
+    async getTimeseries(params: {
+        granularity?: TimeseriesGranularity
+        from?: string // ISO date string
+        to?: string   // ISO date string
+        walletAddress?: string // Optional wallet address to filter by
+    } = {}): Promise<TimeSeriesDataPoint[]> {
+        const searchParams = new URLSearchParams()
+
+        if (params.granularity) {
+            searchParams.set('granularity', params.granularity)
+        }
+        if (params.from) {
+            searchParams.set('from', params.from)
+        }
+        if (params.to) {
+            searchParams.set('to', params.to)
+        }
+        if (params.walletAddress) {
+            searchParams.set('wallet', params.walletAddress)
+        }
+
+        const query = searchParams.toString()
+        const endpoint = query ? `/timeseries?${query}` : '/timeseries'
+
+        return this.request<TimeSeriesDataPoint[]>(endpoint)
   }
 
-  /**
-   * Get time-series data with specified granularity and date range
-   */
-  async getTimeseries(params: {
-    granularity?: TimeseriesGranularity
-    from?: string // ISO date string
-    to?: string   // ISO date string
-  } = {}): Promise<TimeSeriesDataPoint[]> {
-    const searchParams = new URLSearchParams()
-    
-    if (params.granularity) {
-      searchParams.set('granularity', params.granularity)
-    }
-    if (params.from) {
-      searchParams.set('from', params.from)
-    }
-    if (params.to) {
-      searchParams.set('to', params.to)
-    }
+    /**
+     * Get recent transactions with pagination
+     * @param params - Query parameters including optional wallet address
+     */
+    async getTransactions(params: {
+        limit?: number  // max 500, default 50
+        offset?: number // default 0
+        walletAddress?: string // Optional wallet address to filter by
+    } = {}): Promise<IndexerTransaction[]> {
+        const searchParams = new URLSearchParams()
 
-    const query = searchParams.toString()
-    const endpoint = query ? `/timeseries?${query}` : '/timeseries'
-    
-    return this.request<TimeSeriesDataPoint[]>(endpoint)
-  }
+        if (params.limit !== undefined) {
+            searchParams.set('limit', Math.min(500, Math.max(1, params.limit)).toString())
+        }
+        if (params.offset !== undefined) {
+            searchParams.set('offset', Math.max(0, params.offset).toString())
+        }
+        if (params.walletAddress) {
+            searchParams.set('wallet', params.walletAddress)
+        }
 
-  /**
-   * Get recent transactions with pagination
-   */
-  async getTransactions(params: {
-    limit?: number  // max 500, default 50
-    offset?: number // default 0
-  } = {}): Promise<IndexerTransaction[]> {
-    const searchParams = new URLSearchParams()
-    
-    if (params.limit !== undefined) {
-      searchParams.set('limit', Math.min(500, Math.max(1, params.limit)).toString())
-    }
-    if (params.offset !== undefined) {
-      searchParams.set('offset', Math.max(0, params.offset).toString())
-    }
+        const query = searchParams.toString()
+        const endpoint = query ? `/txs?${query}` : '/txs'
 
-    const query = searchParams.toString()
-    const endpoint = query ? `/txs?${query}` : '/txs'
-    
-    return this.request<IndexerTransaction[]>(endpoint)
+        return this.request<IndexerTransaction[]>(endpoint)
   }
 
   /**
@@ -228,25 +260,50 @@ if (typeof window !== 'undefined') {
 }
 
 // Helper functions to transform data for existing components
-export function transformSummaryForLegacyComponents(summary: IndexerSummary): any {
-  return {
-    total_transactions: summary.total_transactions,
-    total_gas_fees: summary.total_gas_cost,
-    // Map other fields as needed for backward compatibility
-    total_blocks: 0, // Not available from indexer
-    unique_addresses: 0, // Not available from indexer
-    unique_contracts: 0, // Not available from indexer
-    successful_transactions: summary.total_transactions, // Assuming all indexed are successful
-    contract_deployments: 0, // Not available from indexer
-    total_value_transferred: "0", // Not tracking value transfers in current indexer
-    avg_gas_per_tx: summary.total_transactions > 0 
-      ? Math.round(parseInt(summary.total_gas_used) / summary.total_transactions)
-      : 0,
-    latest_block: 0, // Not directly available
-    txs_24h: 0, // Would need timeseries data
-    txs_7d: 0, // Would need timeseries data
-    active_addresses_24h: 0, // Not available from indexer
-  }
+export function transformSummaryForLegacyComponents(summary: IndexerSummary | IndexerSummary[]): any {
+    console.log('🔍 transformSummaryForLegacyComponents - Input summary:', summary)
+    
+    // Handle both array and object inputs
+    const summaryData = Array.isArray(summary) ? summary[0] : summary
+    
+    if (!summaryData) {
+        console.warn('🔍 transformSummaryForLegacyComponents - No summary data provided')
+        return {
+            total_transactions: 0,
+            total_gas_fees: "0",
+            total_blocks: 0,
+            unique_addresses: 0,
+            unique_contracts: 0,
+            successful_transactions: 0,
+            contract_deployments: 0,
+            total_value_transferred: "0",
+            avg_gas_per_tx: 0,
+            latest_block: 0,
+            txs_24h: 0,
+            txs_7d: 0,
+            active_addresses_24h: 0,
+        }
+    }
+    
+    const transformed = {
+        total_transactions: summaryData.total_transactions || 0,
+        total_gas_fees: summaryData.total_gas_cost_wei || "0", // Keep as string for ETH conversion
+        // Map other fields as needed for backward compatibility
+        total_blocks: 0, // Not available from indexer
+        unique_addresses: 0, // Not available from indexer
+        unique_contracts: 0, // Not available from indexer
+        successful_transactions: summaryData.total_transactions || 0, // Assuming all indexed are successful
+        contract_deployments: 0, // Not available from indexer
+        total_value_transferred: "0", // Not tracking value transfers in current indexer
+        avg_gas_per_tx: summaryData.avg_gas_per_tx || 0,
+        latest_block: summaryData.latest_block || 0,
+        txs_24h: summaryData.txs_24h || 0,
+        txs_7d: summaryData.txs_7d || 0,
+        active_addresses_24h: 0, // Not available from indexer
+    }
+    
+    console.log('🔍 transformSummaryForLegacyComponents - Transformed result:', transformed)
+    return transformed
 }
 
 export function transformTransactionForLegacyComponents(tx: IndexerTransaction): any {
@@ -265,31 +322,31 @@ export function transformTransactionForLegacyComponents(tx: IndexerTransaction):
 }
 
 export function transformTimeseriesForLegacyComponents(data: TimeSeriesDataPoint[]): any[] {
-  return data.map((point, index) => {
-    // Ensure we have a valid date
-    let date = point.period
-    if (!date) {
-      // Generate a fallback date if period is missing
-      const fallbackDate = new Date()
-      fallbackDate.setDate(fallbackDate.getDate() - (data.length - index - 1))
-      date = fallbackDate.toISOString().split('T')[0] // YYYY-MM-DD format
-    }
+    return data.map((point, index) => {
+        // Ensure we have a valid date
+        let date = point.period
+        if (!date) {
+            // Generate a fallback date if period is missing
+            const fallbackDate = new Date()
+            fallbackDate.setDate(fallbackDate.getDate() - (data.length - index - 1))
+            date = fallbackDate.toISOString().split('T')[0] // YYYY-MM-DD format
+        }
 
-    return {
-      date: date,
-      total_txs: point.transaction_count || 0,
-      successful_txs: point.transaction_count || 0, // Assuming all indexed are successful
-      failed_txs: 0,
-      contract_creations: 0, // Not available
-      unique_senders: 0, // Not available
-      unique_receivers: 0, // Not available
-      total_value: "0", // Not tracking
-      avg_gas_used: point.transaction_count > 0 && point.gas_used
-        ? Math.round(parseInt(point.gas_used) / point.transaction_count)
-        : 0,
-      total_gas_fees: point.gas_cost || "0",
-      active_contracts: 0, // Not available
-      contract_interactions: point.transaction_count || 0,
-    }
-  })
+        return {
+            date: date,
+            total_txs: point.transaction_count || 0,
+            successful_txs: point.transaction_count || 0, // Assuming all indexed are successful
+            failed_txs: 0, // We don't track failed transactions in the current setup
+            contract_creations: 0, // Not available
+            unique_senders: 0, // Not available
+            unique_receivers: 0, // Not available
+            total_value: "0", // Not tracking
+            avg_gas_used: point.transaction_count > 0 && point.gas_used
+                ? Math.round(parseInt(point.gas_used) / point.transaction_count)
+                : 0,
+            total_gas_fees: point.gas_cost || "0",
+            active_contracts: 0, // Not available
+            contract_interactions: point.transaction_count || 0,
+        }
+    })
 }

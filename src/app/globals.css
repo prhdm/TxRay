@@ -4,73 +4,101 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-  }
+/* Romantica Font */
+@font-face {
+    font-family: 'Romantica';
+    src: url('/Romantica.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-space-grotesk), 'Space Grotesk', sans-serif;
-  }
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+    }
+
+    .dark {
+        --background: 222.2 84% 4.9%;
+        --foreground: 210 40% 98%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+        font-family: var(--font-space-grotesk), 'Space Grotesk', sans-serif;
+    }
 }
 
 /* Custom Toast Styles */
 @layer components {
-  .toast-custom {
-    @apply font-sans;
-  }
-  
-  .toast-custom [data-sonner-toast] {
-    @apply bg-background text-foreground border-border;
-    @apply shadow-lg backdrop-blur-sm;
-  }
-  
-  .toast-custom [data-sonner-toast][data-type="success"] {
-    @apply border-green-500/20 bg-green-50/50 dark:bg-green-950/20;
-  }
-  
-  .toast-custom [data-sonner-toast][data-type="error"] {
-    @apply border-red-500/20 bg-red-50/50 dark:bg-red-950/20;
-  }
-  
-  .toast-custom [data-sonner-toast][data-type="info"] {
-    @apply border-blue-500/20 bg-blue-50/50 dark:bg-blue-950/20;
-  }
-  
-  .toast-custom [data-sonner-toast][data-type="warning"] {
-    @apply border-yellow-500/20 bg-yellow-50/50 dark:bg-yellow-950/20;
-  }
-  
-  .toast-custom [data-sonner-toast][data-type="loading"] {
-    @apply border-gray-500/20 bg-gray-50/50 dark:bg-gray-950/20;
-  }
-  
-  .toast-custom [data-sonner-toast] [data-title] {
-    @apply font-semibold text-foreground;
-  }
-  
-  .toast-custom [data-sonner-toast] [data-description] {
-    @apply text-muted-foreground text-sm;
-  }
-  
-  .toast-custom [data-sonner-toast] [data-close-button] {
-    @apply text-muted-foreground hover:text-foreground;
-    @apply hover:bg-muted/50 rounded-md p-1;
-  }
-  
-  .toast-custom [data-sonner-toast] [data-icon] {
-    @apply text-foreground;
-  }
+    .toast-custom {
+        @apply font-sans;
+    }
+
+    .toast-custom [data-sonner-toast] {
+        background: #F3F3F3 !important;
+        color: #191A23 !important;
+        border: 1px solid #191A23 !important;
+        box-shadow: 0 4px 0 0 rgba(0,0,0,1), 0 10px 15px -3px rgb(0 0 0 / 0.1) !important;
+        border-radius: 0.5rem !important;
+    }
+
+    .toast-custom [data-sonner-toast][data-type="success"] {
+        background: #F3F3F3 !important;
+        border-color: #191A23 !important;
+    }
+
+    .toast-custom [data-sonner-toast][data-type="error"] {
+        background: #F3F3F3 !important;
+        border-color: #191A23 !important;
+    }
+
+    .toast-custom [data-sonner-toast][data-type="info"] {
+        background: #F3F3F3 !important;
+        border-color: #191A23 !important;
+    }
+
+    .toast-custom [data-sonner-toast][data-type="warning"] {
+        background: #F3F3F3 !important;
+        border-color: #191A23 !important;
+    }
+
+    .toast-custom [data-sonner-toast][data-type="loading"] {
+        background: #F3F3F3 !important;
+        border-color: #191A23 !important;
+    }
+
+    .toast-custom [data-sonner-toast] [data-title] {
+        color: #191A23 !important;
+        font-weight: 600 !important;
+    }
+
+    .toast-custom [data-sonner-toast] [data-description] {
+        color: #191A23 !important;
+        opacity: 0.8 !important;
+    }
+
+    .toast-custom [data-sonner-toast] [data-close-button] {
+        color: #191A23 !important;
+        opacity: 0.7 !important;
+        background: transparent !important;
+        border: none !important;
+    }
+
+    .toast-custom [data-sonner-toast] [data-close-button]:hover {
+        opacity: 1 !important;
+        background: rgba(25, 26, 35, 0.1) !important;
+        border-radius: 0.375rem !important;
+    }
+
+    .toast-custom [data-sonner-toast] [data-icon] {
+        color: #191A23 !important;
+    }
 }
