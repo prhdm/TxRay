@@ -1,6 +1,6 @@
 'use client'
 
-import {Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts'
+import {Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts'
 import {format} from 'date-fns'
 import {DailyStats} from '@/features/analytics/types'
 
@@ -114,9 +114,13 @@ export function TransactionChart({data}: TransactionChartProps) {
     }
 
     return (
-        <div className="w-full">
-            <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={chartData}>
+        <div className="w-full h-[400px] flex items-center justify-center focus:outline-none focus:ring-0 focus:border-0 outline-none ring-0 border-0">
+            <ResponsiveContainer width="100%" height="100%" className="focus:outline-none outline-none">
+                <BarChart 
+                    data={chartData} 
+                    margin={{ top: 20, right: 20, left: 5, bottom: 20 }}
+                    style={{ outline: 'none' }}
+                >
                     <defs>
                         <linearGradient id="successfulGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
@@ -138,23 +142,21 @@ export function TransactionChart({data}: TransactionChartProps) {
                         tick={{fontSize: 12}}
                     />
                     <Tooltip content={<CustomTooltip/>}/>
-                    <Area
-                        type="monotone"
+                    <Bar
                         dataKey="successful_txs"
                         stackId="1"
-                        stroke="#10b981"
-                        fill="url(#successfulGradient)"
-                        strokeWidth={2}
+                        fill="#B9FF66"
+                        name="Successful"
+                        radius={[4, 4, 0, 0]}
                     />
-                    <Area
-                        type="monotone"
+                    <Bar
                         dataKey="failed_txs"
                         stackId="1"
-                        stroke="#ef4444"
-                        fill="url(#failedGradient)"
-                        strokeWidth={2}
+                        fill="#ef4444"
+                        name="Failed"
+                        radius={[4, 4, 0, 0]}
                     />
-                </AreaChart>
+                </BarChart>
             </ResponsiveContainer>
         </div>
     )

@@ -31,9 +31,11 @@ export const useGlobalAnalyticsData = () => {
 
     const loadSummary = useCallback(async () => {
         try {
-            console.log('Loading global analytics summary');
+            console.log('useGlobalAnalyticsData: Loading global analytics summary');
             const response = await analyticsApi.getAllSummary();
+            console.log('useGlobalAnalyticsData: Raw API response:', response);
             const transformedSummary = transformSummaryForLegacyComponents(response);
+            console.log('useGlobalAnalyticsData: Transformed summary:', transformedSummary);
 
             setState(prev => ({
                 ...prev,
@@ -41,7 +43,7 @@ export const useGlobalAnalyticsData = () => {
                 error: null
             }));
         } catch (error) {
-            console.error('Failed to load global summary:', error);
+            console.error('useGlobalAnalyticsData: Failed to load global summary:', error);
             setState(prev => ({
                 ...prev,
                 summary: null,

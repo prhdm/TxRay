@@ -636,11 +636,27 @@ export const bootstrapAuth = async (): Promise<AuthUser | null> => {
  */
 export const useWalletAuth = () => {
     const {signMessageAsync} = useSignMessage();
-    const {chainId} = useAccount();
+    const {chainId, isConnected, address: connectedAddress} = useAccount();
     const {switchChain} = useSwitchChain();
 
     const authenticate = async (address: string): Promise<AuthResult> => {
         try {
+            // Check if wallet is connected
+            if (!isConnected || !connectedAddress) {
+                return {
+                    success: false,
+                    error: 'Wallet not connected. Please connect your wallet first.',
+                };
+            }
+
+            // Verify the connected address matches the expected address
+            if (connectedAddress.toLowerCase() !== address.toLowerCase()) {
+                return {
+                    success: false,
+                    error: 'Connected wallet address does not match expected address',
+                };
+            }
+
             if (!signMessageAsync) {
                 return {
                     success: false,

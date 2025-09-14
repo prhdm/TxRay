@@ -109,26 +109,25 @@ const ProfileDropdown = React.forwardRef<HTMLDivElement, ProfileDropdownProps>(
 
                 {/* Logout Confirmation Dialog */}
                 <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
-                    <DialogContent className="sm:max-w-[425px]">
+                    <DialogContent className="sm:max-w-[425px] bg-[#F3F3F3] border-[#191A23]">
                         <DialogHeader>
-                            <DialogTitle>Confirm Logout</DialogTitle>
-                            <DialogDescription>
+                            <DialogTitle className="text-[#191A23]">Confirm Logout</DialogTitle>
+                            <DialogDescription className="text-[#191A23]/80">
                                 Are you sure you want to logout? You will need to reconnect your wallet to access your
                                 account again.
                             </DialogDescription>
                         </DialogHeader>
-                        <DialogFooter className="gap-2">
+                        <DialogFooter className="gap-3">
                             <Button
                                 variant="outline"
                                 onClick={handleLogoutCancel}
-                                className="flex-1"
+                                className="flex-1 border-[#191A23] text-[#191A23] hover:bg-[#191A23] hover:text-white shadow-[0_4px_0_0_rgba(0,0,0,1)] hover:shadow-[0_6px_0_0_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all duration-200"
                             >
                                 Cancel
                             </Button>
                             <Button
-                                variant="destructive"
                                 onClick={handleLogoutConfirm}
-                                className="flex-1"
+                                className="flex-1 bg-[#191A23] text-white hover:bg-[#191A23]/90 shadow-[0_4px_0_0_rgba(0,0,0,1)] hover:shadow-[0_6px_0_0_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all duration-200"
                             >
                                 Logout
                             </Button>

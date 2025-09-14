@@ -27,11 +27,15 @@ export function AnalyticsProvider({children}: { children: ReactNode }) {
 
     // Load initial data when wallet address becomes available
     useEffect(() => {
+        console.log('Analytics: Wallet address changed:', walletAddress)
+        console.log('Analytics: Auth user:', authUser)
         if (walletAddress) {
             console.log('Analytics: Wallet address available, loading initial data')
             analyticsData.refreshData()
+        } else {
+            console.log('Analytics: No wallet address available, skipping data load')
         }
-    }, [walletAddress, analyticsData.refreshData])
+    }, [walletAddress, analyticsData.refreshData, authUser])
 
     // Create context value
     const value: AnalyticsContextType = {

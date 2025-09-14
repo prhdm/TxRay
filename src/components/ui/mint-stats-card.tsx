@@ -40,7 +40,7 @@ const MintStatsCard = React.forwardRef<HTMLDivElement, MintStatsCardProps>(
           <span className="font-['Space_Grotesk'] font-medium text-lg sm:text-xl lg:text-2xl text-[#000000]">
             {isAuthenticated
                 ? `You can mint: ${isLoading ? "..." : userCanMint.toLocaleString()}`
-                : `Available to mint: ${isLoading ? "..." : availableToMint.toLocaleString()}`
+                : `TotalSupply: ${isLoading ? "..." : totalSupply.toLocaleString()}`
             }
           </span>
                 </div>
@@ -50,7 +50,7 @@ const MintStatsCard = React.forwardRef<HTMLDivElement, MintStatsCardProps>(
           <span className="font-['Space_Grotesk'] font-medium text-lg sm:text-xl lg:text-2xl text-[#000000]">
             {isAuthenticated
                 ? `You minted: ${isLoading ? "..." : userMintCount.toLocaleString()}`
-                : `Total minted: ${isLoading ? "..." : totalMinted.toLocaleString()}`
+                : `Total Minted By Users: ${isLoading ? "..." : totalMinted.toLocaleString()}`
             }
           </span>
                 </div>

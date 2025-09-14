@@ -1,7 +1,8 @@
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { createPublicClient, http, decodeFunctionData } from "npm:viem@2";
-import { TelegramBot, safeTelegramAlert } from "../_shared/telegram.ts";
+import {serve} from "https://deno.land/std@0.224.0/http/server.ts";
+import {createClient} from "https://esm.sh/@supabase/supabase-js@2";
+import {createPublicClient, decodeFunctionData, http} from "npm:viem@2";
+import {safeTelegramAlert, TelegramBot} from "../_shared/telegram.ts";
+
 const sb = createClient(Deno.env.get("SUPABASE_URL"), Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
 const CRON_SECRET = Deno.env.get("CRON_SECRET");
 const RPC_URL = Deno.env.get("RPC_URL") ?? "https://rpc.hekla.taiko.xyz";
@@ -43,7 +44,7 @@ const client = createPublicClient({
 const CHUNK_BLOCKS = 4000n;
 const MAX_TXS_PER_RUN = 3000;
 
-const ok = (d, s = 200)=>new Response(JSON.stringify(d), {
+const ok = (d, s = 200) => new Response(JSON.stringify(d), {
     status: s,
     headers: {
         "content-type": "application/json"
@@ -51,6 +52,7 @@ const ok = (d, s = 200)=>new Response(JSON.stringify(d), {
 });
 
 const ALLOW_HEADERS = "content-type,authorization,apikey,x-client-info,prefer";
+
 function corsHeaders(origin) {
     const allowOrigin = APP_ORIGIN === "*" ? "*" : origin === APP_ORIGIN ? APP_ORIGIN : "";
     const h = {
@@ -61,14 +63,15 @@ function corsHeaders(origin) {
     if (allowOrigin) h["access-control-allow-origin"] = allowOrigin;
     return h;
 }
-const okCors = (d, origin, s = 200)=>new Response(JSON.stringify(d), {
+
+const okCors = (d, origin, s = 200) => new Response(JSON.stringify(d), {
     status: s,
     headers: {
         "content-type": "application/json",
         ...corsHeaders(origin)
     }
 });
-const cors = (origin)=>new Response(null, {
+const cors = (origin) => new Response(null, {
     status: 204,
     headers: corsHeaders(origin)
 });
@@ -82,7 +85,7 @@ async function runIndexer(secret, headerSecret) {
     if (!CONTRACT) return ok({
         error: "Missing CONTRACT env"
     }, 500);
-    const { data: cur, error: curErr } = await sb.from("index_cursor").select("*").eq("id", 1).single();
+    const {data: cur, error: curErr} = await sb.from("index_cursor").select("*").eq("id", 1).single();
     if (curErr && curErr.code !== "PGRST116") return ok({
         error: curErr.message
     }, 500);
@@ -104,7 +107,7 @@ async function runIndexer(secret, headerSecret) {
     let processedTo = last;
     let inserted = 0;
     try {
-        for(let from = last + 1n; from <= head; from += CHUNK_BLOCKS){
+        for (let from = last + 1n; from <= head; from += CHUNK_BLOCKS) {
             const to = from + CHUNK_BLOCKS - 1n <= head ? from + CHUNK_BLOCKS - 1n : head;
             const logs = await client.getLogs({
                 address: CONTRACT,
@@ -112,14 +115,14 @@ async function runIndexer(secret, headerSecret) {
                 toBlock: to
             });
             const txHashes = [
-                ...new Set(logs.map((l)=>l.transactionHash))
+                ...new Set(logs.map((l) => l.transactionHash))
             ];
             if (!txHashes.length) {
                 processedTo = to;
                 continue;
             }
             const rows = [];
-            for (const h of txHashes){
+            for (const h of txHashes) {
                 if (inserted >= MAX_TXS_PER_RUN) break;
                 const [tx, rcpt] = await Promise.all([
                     client.getTransaction({
@@ -166,7 +169,7 @@ async function runIndexer(secret, headerSecret) {
                 inserted++;
             }
             if (rows.length) {
-                const { error: upErr } = await sb.from("transactions").upsert(rows, {
+                const {error: upErr} = await sb.from("transactions").upsert(rows, {
                     onConflict: "tx_hash"
                 });
                 if (upErr) return ok({
@@ -176,7 +179,7 @@ async function runIndexer(secret, headerSecret) {
             processedTo = to;
             if (inserted >= MAX_TXS_PER_RUN) break;
         }
-        const { error: curUpErr } = await sb.from("index_cursor").upsert({
+        const {error: curUpErr} = await sb.from("index_cursor").upsert({
             id: 1,
             last_block_number: Number(processedTo),
             last_run_at: new Date().toISOString()
@@ -229,9 +232,9 @@ async function runIndexer(secret, headerSecret) {
 
 async function getSummary(origin, walletAddress = null) {
     let query = sb.from("kpi_summary");
-    
+
     if (walletAddress) {
-        const { data, error } = await sb.rpc("kpi_summary_wallet", {
+        const {data, error} = await sb.rpc("kpi_summary_wallet", {
             wallet_addr: walletAddress.toLowerCase()
         });
         if (error) return okCors({
@@ -239,7 +242,7 @@ async function getSummary(origin, walletAddress = null) {
         }, origin, 500);
         return okCors(data, origin);
     } else {
-        const { data, error } = await query.select("*").single();
+        const {data, error} = await query.select("*").single();
         if (error) return okCors({
             error: error.message
         }, origin, 500);
@@ -251,9 +254,9 @@ async function getTimeseries(url, origin, walletAddress = null) {
     const gran = url.searchParams.get("granularity") ?? "day";
     const from = url.searchParams.get("from");
     const to = url.searchParams.get("to");
-    
+
     if (walletAddress) {
-        const { data, error } = await sb.rpc("kpi_timeseries_wallet", {
+        const {data, error} = await sb.rpc("kpi_timeseries_wallet_text", {
             granularity: gran,
             start_at: from ? new Date(from).toISOString() : null,
             end_at: to ? new Date(to).toISOString() : null,
@@ -264,7 +267,7 @@ async function getTimeseries(url, origin, walletAddress = null) {
         }, origin, 500);
         return okCors(data, origin);
     } else {
-        const { data, error } = await sb.rpc("kpi_timeseries", {
+        const {data, error} = await sb.rpc("kpi_timeseries_text", {
             granularity: gran,
             start_at: from ? new Date(from).toISOString() : null,
             end_at: to ? new Date(to).toISOString() : null
@@ -279,17 +282,17 @@ async function getTimeseries(url, origin, walletAddress = null) {
 async function getTxs(url, origin, walletAddress = null) {
     const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit") ?? 50)));
     const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0));
-    
+
     let query = sb.from("transactions").select("tx_hash,block_number,block_timestamp,from_address,to_address,value_wei,gas_used,effective_gas_price_wei,gas_cost_wei,method,status");
-    
+
     if (walletAddress) {
         query = query.eq("from_address", walletAddress.toLowerCase());
     }
-    
-    const { data, error } = await query.order("block_number", {
+
+    const {data, error} = await query.order("block_number", {
         ascending: false
     }).range(offset, offset + limit - 1);
-    
+
     if (error) return okCors({
         error: error.message
     }, origin, 500);
@@ -297,13 +300,13 @@ async function getTxs(url, origin, walletAddress = null) {
 }
 
 async function getHealth(origin) {
-    const { data } = await sb.from("index_cursor").select("*").eq("id", 1).single();
+    const {data} = await sb.from("index_cursor").select("*").eq("id", 1).single();
     return okCors({
         index_cursor: data ?? null
     }, origin);
 }
 
-serve(async (req)=>{
+serve(async (req) => {
     const url = new URL(req.url);
     const path = url.pathname.replace(/\/+$/, "");
     const origin = req.headers.get("origin");
@@ -320,7 +323,7 @@ serve(async (req)=>{
             return runIndexer(url.searchParams.get("secret"), req.headers.get("x-cron-secret"));
         }
         const walletAddress = url.searchParams.get("wallet") || req.headers.get("x-wallet-address");
-        
+
         if (req.method === "GET" && path.endsWith("/summary")) {
             return getSummary(origin, walletAddress);
         }

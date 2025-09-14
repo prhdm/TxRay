@@ -42,6 +42,12 @@ export const useAppHandlers = (
             return;
         }
 
+        // Check if wallet is actually connected before attempting authentication
+        if (!address) {
+            console.log('No wallet address provided, skipping authentication');
+            return;
+        }
+
         if (!networkState.isCorrectNetwork) {
             setShowNetworkModal(true);
             return;
@@ -51,7 +57,10 @@ export const useAppHandlers = (
         lastAuthAttemptRef.current = now;
 
         try {
+            console.log('Attempting authentication for address:', address);
             await authState.authenticate(address);
+        } catch (error) {
+            console.error('Authentication error in handleAuthenticated:', error);
         } finally {
             authInProgressRef.current = false;
         }

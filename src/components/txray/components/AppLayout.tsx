@@ -23,7 +23,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                                                         children,
                                                     }) => {
     return (
-        <div className="min-h-screen bg-background text-foreground">
+        <div className="min-h-screen bg-background text-foreground flex flex-col">
             {/* Desktop Header */}
             <div className="hidden lg:block">
                 <Header
@@ -71,7 +71,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             </div>
 
             {/* Main Content */}
-            <main className="flex-1">
+            <main className="flex-1 flex flex-col">
                 {children}
             </main>
 

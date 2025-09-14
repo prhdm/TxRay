@@ -1,0 +1,6 @@
+# Exclude supabase folder from Next.js build
+supabase/
+supabase/**
+supabase/**/*
+**/supabase/**
+**/supabase/**/*

@@ -8,8 +8,8 @@ interface TransactionPieChartProps {
 }
 
 const COLORS = [
-    '#0088FE', '#00C49F', '#FFBB28', '#FF8042',
-    '#8884D8', '#82CA9D', '#FFC658', '#FF7C7C'
+    '#B9FF66', '#191A23', '#0088FE', '#00C49F', 
+    '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'
 ]
 
 export function TransactionPieChart({transactions}: TransactionPieChartProps) {
@@ -24,6 +24,13 @@ export function TransactionPieChart({transactions}: TransactionPieChartProps) {
         .map(([name, value]) => ({name, value}))
         .sort((a, b) => (b.value as number) - (a.value as number))
         .slice(0, 8) // Top 8 methods
+
+    // Function to get color for specific methods
+    const getMethodColor = (methodName: string, index: number) => {
+        if (methodName.toLowerCase() === 'mint') return '#B9FF66'
+        if (methodName.toLowerCase() === 'upgradetokento') return '#191A23'
+        return COLORS[index % COLORS.length]
+    }
 
     const CustomTooltip = ({active, payload}: any) => {
         if (active && payload && payload.length) {
@@ -49,21 +56,21 @@ export function TransactionPieChart({transactions}: TransactionPieChartProps) {
     }
 
     return (
-        <div className="w-full">
-            <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
+        <div className="w-full h-[400px] flex flex-col items-center justify-center focus:outline-none focus:ring-0 focus:border-0 outline-none ring-0 border-0">
+            <ResponsiveContainer width="100%" height="100%" className="focus:outline-none outline-none">
+                <PieChart style={{ outline: 'none' }}>
                     <Pie
                         data={chartData}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
                         label={({name, percent}) => `${name} ${(percent ? (percent * 100).toFixed(0) : 0)}%`}
-                        outerRadius={80}
+                        outerRadius={100}
                         fill="#8884d8"
                         dataKey="value"
                     >
                         {chartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]}/>
+                            <Cell key={`cell-${index}`} fill={getMethodColor(entry.name, index)}/>
                         ))}
                     </Pie>
                     <Tooltip content={<CustomTooltip/>}/>
@@ -76,7 +83,7 @@ export function TransactionPieChart({transactions}: TransactionPieChartProps) {
                     <div key={item.name} className="flex items-center gap-2 text-sm">
                         <div
                             className="w-3 h-3 rounded-full"
-                            style={{backgroundColor: COLORS[index % COLORS.length]}}
+                            style={{backgroundColor: getMethodColor(item.name, index)}}
                         />
                         <span className="truncate">{item.name}</span>
                         <span className="text-muted-foreground ml-auto">

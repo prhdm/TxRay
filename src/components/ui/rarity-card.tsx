@@ -1,6 +1,7 @@
 import * as React from "react"
 import {cn} from "@/components/ui/lib/utils"
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from "./tooltip"
+import {Progress} from "./progress"
 
 export interface RarityCardProps extends React.HTMLAttributes<HTMLDivElement> {
     rarity: string
@@ -169,8 +170,8 @@ const RarityCard = React.forwardRef<HTMLDivElement, RarityCardProps>(
                         {/* Card count - conditionally rendered */}
                         {!hideCollectedCount && (
                             <div className={cn(
-                                "flex items-center justify-center px-4 py-2 rounded-lg w-full",
-                                isSpecial ? "px-6 py-3 max-w-[300px]" : "max-w-[200px]",
+                                "flex flex-col items-center justify-center px-4 py-2 rounded-lg w-full gap-2 min-h-[60px]",
+                                isSpecial ? "px-6 py-3 max-w-[300px] min-h-[80px]" : "max-w-[200px]",
                                 getTextBackgroundColor() === "#B9FF66" ? "bg-[#B9FF66]" : "bg-[#F3F3F3]"
                             )}>
               <span className={cn(
@@ -179,6 +180,14 @@ const RarityCard = React.forwardRef<HTMLDivElement, RarityCardProps>(
               )}>
                 {cardCount}/2 Collected
               </span>
+                                {/* Progress bar - always show for better UX */}
+                                <div className="w-full h-2">
+                                    <Progress 
+                                        value={Math.min((cardCount / 2) * 100, 100)} 
+                                        className="h-2 bg-[#000000]/20"
+                                        indicatorClassName="bg-[#000000]"
+                                    />
+                                </div>
                             </div>
                         )}
 

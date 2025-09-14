@@ -80,10 +80,8 @@ export {
     TooltipProvider,
 } from "./tooltip"
 
-// Notification system disabled
-// export { NotificationProvider, useNotification } from "./notification-provider"
-// export type { Notification, NotificationType } from "./notification-provider"
-// export { Notification as NotificationItem } from "./notification"
-// export { NotificationContainer } from "./notification-container"
+export {Progress} from "./progress"
+
+
 
 export {cn} from "./lib/utils"

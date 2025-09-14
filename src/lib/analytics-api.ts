@@ -158,7 +158,17 @@ class AnalyticsApiClient {
      */
     async getSummary(walletAddress?: string): Promise<IndexerSummary> {
         const endpoint = walletAddress ? `/summary?wallet=${walletAddress}` : '/summary'
-        return this.request<IndexerSummary>(endpoint)
+        const response = await this.request<IndexerSummary | IndexerSummary[]>(endpoint)
+        
+        // Handle array response from wallet-specific queries
+        if (Array.isArray(response)) {
+            if (response.length === 0) {
+                throw new Error('No data found for this wallet address')
+            }
+            return response[0]
+        }
+        
+        return response
     }
 
     /**
@@ -250,23 +260,50 @@ if (typeof window !== 'undefined') {
 }
 
 // Helper functions to transform data for existing components
-export function transformSummaryForLegacyComponents(summary: IndexerSummary): any {
-    return {
-        total_transactions: summary.total_transactions,
-        total_gas_fees: summary.total_gas_cost_wei,
+export function transformSummaryForLegacyComponents(summary: IndexerSummary | IndexerSummary[]): any {
+    console.log('🔍 transformSummaryForLegacyComponents - Input summary:', summary)
+    
+    // Handle both array and object inputs
+    const summaryData = Array.isArray(summary) ? summary[0] : summary
+    
+    if (!summaryData) {
+        console.warn('🔍 transformSummaryForLegacyComponents - No summary data provided')
+        return {
+            total_transactions: 0,
+            total_gas_fees: "0",
+            total_blocks: 0,
+            unique_addresses: 0,
+            unique_contracts: 0,
+            successful_transactions: 0,
+            contract_deployments: 0,
+            total_value_transferred: "0",
+            avg_gas_per_tx: 0,
+            latest_block: 0,
+            txs_24h: 0,
+            txs_7d: 0,
+            active_addresses_24h: 0,
+        }
+    }
+    
+    const transformed = {
+        total_transactions: summaryData.total_transactions || 0,
+        total_gas_fees: summaryData.total_gas_cost_wei || "0", // Keep as string for ETH conversion
         // Map other fields as needed for backward compatibility
         total_blocks: 0, // Not available from indexer
         unique_addresses: 0, // Not available from indexer
         unique_contracts: 0, // Not available from indexer
-        successful_transactions: summary.total_transactions, // Assuming all indexed are successful
+        successful_transactions: summaryData.total_transactions || 0, // Assuming all indexed are successful
         contract_deployments: 0, // Not available from indexer
         total_value_transferred: "0", // Not tracking value transfers in current indexer
-        avg_gas_per_tx: summary.avg_gas_per_tx,
-        latest_block: summary.latest_block,
-        txs_24h: summary.txs_24h,
-        txs_7d: summary.txs_7d,
+        avg_gas_per_tx: summaryData.avg_gas_per_tx || 0,
+        latest_block: summaryData.latest_block || 0,
+        txs_24h: summaryData.txs_24h || 0,
+        txs_7d: summaryData.txs_7d || 0,
         active_addresses_24h: 0, // Not available from indexer
     }
+    
+    console.log('🔍 transformSummaryForLegacyComponents - Transformed result:', transformed)
+    return transformed
 }
 
 export function transformTransactionForLegacyComponents(tx: IndexerTransaction): any {

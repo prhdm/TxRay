@@ -57,13 +57,13 @@ export default function InventoryPage() {
             return {
                 id: level,
                 rarity: `Rarity ${level}`,
-                cardCount: rarityData ? Number(rarityData.balance ?? BigInt(0)) : 0,
+                cardCount: isAuthenticated && rarityData ? Number(rarityData.balance ?? BigInt(0)) : 0,
                 variant: (["default", "primary", "dark"] as const)[index % 3],
                 canUpgrade: isAuthenticated && rarityData ? rarityData.canUpgrade : false,
                 isSpecial: level === 13, // Mark rarity 13 as special
             };
         });
-    }, [rarities]);
+    }, [rarities, isAuthenticated]);
 
     // Separate normal and special cards
     const normalCards = useMemo(() => allRarityCards.filter(card => !card.isSpecial), [allRarityCards]);
@@ -71,8 +71,8 @@ export default function InventoryPage() {
 
     // Calculate total cards for tooltip logic
     const totalCards = useMemo(() => {
-        return rarities.reduce((sum, rarity) => sum + Number(rarity.balance ?? BigInt(0)), 0);
-    }, [rarities]);
+        return isAuthenticated ? rarities.reduce((sum, rarity) => sum + Number(rarity.balance ?? BigInt(0)), 0) : 0;
+    }, [rarities, isAuthenticated]);
 
     const handleUpgrade = useCallback(async (tokenId: number) => {
         try {
@@ -211,6 +211,7 @@ export default function InventoryPage() {
                                     tokenId={rarity.id}
                                     isSpecial={true}
                                     hideUpgradeButton={true} // Hide upgrade button for rarity 13
+                                    hideCollectedCount={true} // Hide collection count for rarity 13
                                     totalCards={totalCards}
                                     className="w-full"
                                 />

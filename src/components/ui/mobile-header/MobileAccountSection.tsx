@@ -26,17 +26,17 @@ export const MobileAccountSection: React.FC<MobileAccountSectionProps> = ({
     return (
         <div className="p-4 border-b border-border bg-gradient-to-r from-gray-50 to-background">
             <div className="space-y-3">
-                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide text-center">
                     {user && !needsWalletConnection ? 'Account' : 'Wallet'}
                 </h3>
 
                 {user && !needsWalletConnection ? (
                     <div className="space-y-2">
                         {/* Wallet Address */}
-                        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                            <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-center p-3 bg-muted/50 rounded-lg">
+                            <div className="text-center">
                                 <p className="text-xs text-muted-foreground">Wallet</p>
-                                <p className="text-sm font-mono text-foreground truncate">
+                                <p className="text-sm font-mono text-foreground">
                                     {user.address?.slice(0, 6)}...{user.address?.slice(-4)}
                                 </p>
                             </div>
@@ -44,10 +44,10 @@ export const MobileAccountSection: React.FC<MobileAccountSectionProps> = ({
 
                         {/* Username */}
                         {user.username && (
-                            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                                <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-center p-3 bg-muted/50 rounded-lg">
+                                <div className="text-center">
                                     <p className="text-xs text-muted-foreground">Username</p>
-                                    <p className="text-sm text-foreground truncate">{user.username}</p>
+                                    <p className="text-sm text-foreground">{user.username}</p>
                                 </div>
                             </div>
                         )}

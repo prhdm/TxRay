@@ -47,16 +47,14 @@ export default function AnalyticsPage() {
                     />
                 </AnalyticsProvider>
             ) : (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Connect Your Wallet</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-muted-foreground">
-                            You have to connect your wallet to see the analytics
-                        </p>
-                    </CardContent>
-                </Card>
+                <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+                    <h2 className="text-2xl font-medium text-foreground/60 mb-4">
+                        Connect Your Wallet
+                    </h2>
+                    <p className="text-muted-foreground/60 max-w-md">
+                        You have to connect your wallet to see the analytics
+                    </p>
+                </div>
             )}
         </main>
     );

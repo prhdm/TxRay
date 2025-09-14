@@ -20,11 +20,12 @@ interface KPICardProps {
     trend?: string
     trendUp?: boolean
     tooltip?: string
+    className?: string
 }
 
-export function KPICard({title, value, description, icon, trend, trendUp, tooltip}: KPICardProps) {
+export function KPICard({title, value, description, icon, trend, trendUp, tooltip, className = ''}: KPICardProps) {
     return (
-        <Card className="h-full flex flex-col">
+        <Card className={`h-full flex flex-col ${className}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{title}</CardTitle>
                 <TooltipProvider>

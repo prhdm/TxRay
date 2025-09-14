@@ -8,9 +8,10 @@ export const toastUtils = {
             description,
             duration: 4000,
             style: {
-                background: 'hsl(var(--background))',
-                color: 'hsl(var(--foreground))',
-                border: '1px solid hsl(var(--border))',
+                background: '#F3F3F3',
+                color: '#191A23',
+                border: '1px solid #191A23',
+                boxShadow: '0 4px 0 0 rgba(0,0,0,1)',
             },
         });
     },
@@ -21,9 +22,10 @@ export const toastUtils = {
             description,
             duration: 6000,
             style: {
-                background: 'hsl(var(--background))',
-                color: 'hsl(var(--foreground))',
-                border: '1px solid hsl(var(--border))',
+                background: '#F3F3F3',
+                color: '#191A23',
+                border: '1px solid #191A23',
+                boxShadow: '0 4px 0 0 rgba(0,0,0,1)',
             },
         });
     },
@@ -34,9 +36,10 @@ export const toastUtils = {
             description,
             duration: 4000,
             style: {
-                background: 'hsl(var(--background))',
-                color: 'hsl(var(--foreground))',
-                border: '1px solid hsl(var(--border))',
+                background: '#F3F3F3',
+                color: '#191A23',
+                border: '1px solid #191A23',
+                boxShadow: '0 4px 0 0 rgba(0,0,0,1)',
             },
         });
     },
@@ -47,9 +50,10 @@ export const toastUtils = {
             description,
             duration: 5000,
             style: {
-                background: 'hsl(var(--background))',
-                color: 'hsl(var(--foreground))',
-                border: '1px solid hsl(var(--border))',
+                background: '#F3F3F3',
+                color: '#191A23',
+                border: '1px solid #191A23',
+                boxShadow: '0 4px 0 0 rgba(0,0,0,1)',
             },
         });
     },

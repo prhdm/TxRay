@@ -30,12 +30,17 @@ export const useAnalyticsData = (walletAddress?: string) => {
     }, []);
 
     const loadSummary = useCallback(async () => {
-        if (!walletAddress) return;
+        if (!walletAddress) {
+            console.log('useAnalyticsData: No wallet address, skipping summary load');
+            return;
+        }
 
         try {
-            console.log('Loading analytics summary for wallet:', walletAddress);
+            console.log('useAnalyticsData: Loading analytics summary for wallet:', walletAddress);
             const response = await analyticsApi.getSummary(walletAddress);
+            console.log('useAnalyticsData: Raw API response:', response);
             const transformedSummary = transformSummaryForLegacyComponents(response);
+            console.log('useAnalyticsData: Transformed summary:', transformedSummary);
 
             setState(prev => ({
                 ...prev,
@@ -43,7 +48,7 @@ export const useAnalyticsData = (walletAddress?: string) => {
                 error: null
             }));
         } catch (error) {
-            console.error('Failed to load summary:', error);
+            console.error('useAnalyticsData: Failed to load summary:', error);
             setState(prev => ({
                 ...prev,
                 summary: null,

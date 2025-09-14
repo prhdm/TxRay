@@ -73,12 +73,17 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
 
             // Only trigger authentication if we're in connecting state and have the necessary callbacks
             if (isConnected && address && onAuthenticated && authFlowState === 'connecting') {
-                console.log('Wallet connected successfully, will trigger authentication in 300ms');
-                // Add a small delay to ensure this isn't a brief connection flash from cancellation
+                console.log('Wallet connected successfully, will trigger authentication in 1 second');
+                // Add a longer delay to ensure wallet is fully ready for signing
                 const timeoutId = setTimeout(() => {
-                    console.log('Triggering authentication for address:', address);
-                    onAuthenticated(address);
-                }, 300); // Reduced delay
+                    // Double-check that wallet is still connected before triggering auth
+                    if (isConnected && address) {
+                        console.log('Triggering authentication for address:', address);
+                        onAuthenticated(address);
+                    } else {
+                        console.log('Wallet disconnected during timeout, skipping authentication');
+                    }
+                }, 1000); // Increased delay to 1 second
 
                 return () => clearTimeout(timeoutId);
             }

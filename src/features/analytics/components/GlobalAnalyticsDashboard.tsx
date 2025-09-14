@@ -13,7 +13,7 @@ import {
     TooltipTrigger
 } from '@/ui'
 import { Activity, BarChart3, Calendar, Clock, PieChart, RefreshCw, Table, TrendingUp, Zap } from 'lucide-react'
-import { useGlobalAnalytics } from '@/features/analytics/hooks/useGlobalAnalyticsData'
+import { useGlobalAnalyticsData } from '@/features/analytics/hooks/useGlobalAnalyticsData'
 import { KPICard } from './KPICard'
 import { TransactionChart } from './TransactionChart'
 import { TransactionPieChart } from './TransactionPieChart'
@@ -32,9 +32,14 @@ export function GlobalAnalyticsDashboard({ onRefresh, isRefreshing }: GlobalAnal
         isLoading,
         error,
         refreshData,
-        hasMoreTransactions,
+        hasMore,
         loadMoreTransactions,
-    } = useGlobalAnalytics()
+    } = useGlobalAnalyticsData()
+
+    // Debug logging to help identify data issues
+    console.log('GlobalAnalyticsDashboard - Summary data:', summary)
+    console.log('GlobalAnalyticsDashboard - Daily stats:', dailyStats)
+    console.log('GlobalAnalyticsDashboard - Transactions count:', transactions.length)
 
     const handleRefresh = async () => {
         await refreshData()
@@ -66,12 +71,12 @@ export function GlobalAnalyticsDashboard({ onRefresh, isRefreshing }: GlobalAnal
 
     if (isLoading && !summary) {
         return (
-            <Card className="p-6">
+            <div className="flex-1 flex items-center justify-center min-h-[400px]">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                     <p className="text-muted-foreground">Loading global analytics data...</p>
                 </div>
-            </Card>
+            </div>
         )
     }
 
@@ -192,7 +197,7 @@ export function GlobalAnalyticsDashboard({ onRefresh, isRefreshing }: GlobalAnal
                         <div className="h-full">
                             <KPICard
                                 title="Avg Gas Used"
-                                value={summary?.avg_gas_per_tx?.toLocaleString() || '0'}
+                                value={`${summary?.avg_gas_per_tx?.toLocaleString() || '0'} wei`}
                                 description="Per transaction"
                                 icon={<TrendingUp className="h-4 w-4"/>}
                                 tooltip="Average amount of gas consumed per transaction across all wallets"
@@ -234,9 +239,6 @@ export function GlobalAnalyticsDashboard({ onRefresh, isRefreshing }: GlobalAnal
                 <CardContent>
                     <TransactionTable
                         transactions={transactions}
-                        onLoadMore={loadMoreTransactions}
-                        hasMore={hasMoreTransactions}
-                        isLoading={isLoading}
                     />
                 </CardContent>
             </Card>

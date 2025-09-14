@@ -8,24 +8,17 @@ import {formatDistanceToNow} from 'date-fns'
 
 interface TransactionTableProps {
     transactions: Transaction[]
-    onLoadMore: () => Promise<void>
-    hasMore: boolean
-    isLoading: boolean
 }
 
 type SortField = 'value' | 'method' | 'timestamp'
 type SortDirection = 'asc' | 'desc'
 
 export function TransactionTable({
-                                     transactions,
-                                     onLoadMore,
-                                     hasMore,
-                                     isLoading
+                                     transactions
                                  }: TransactionTableProps) {
     const [sortField, setSortField] = useState<SortField>('timestamp')
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
     const [currentPage, setCurrentPage] = useState(1)
-    const [loadingMore, setLoadingMore] = useState(false)
 
     const itemsPerPage = 5
 
@@ -85,12 +78,6 @@ export function TransactionTable({
         setCurrentPage(Math.max(1, Math.min(page, totalPages)))
     }
 
-    const handleLoadMore = async () => {
-        setLoadingMore(true)
-        await onLoadMore()
-        setLoadingMore(false)
-    }
-
     // Sort indicator component
     const SortIndicator = ({field}: { field: SortField }) => {
         if (sortField !== field) return null
@@ -132,37 +119,37 @@ export function TransactionTable({
     return (
         <div className="space-y-4">
             {/* Table */}
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border border-[#191A23] rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-muted/50">
+                        <thead className="bg-[#191A23]">
                         <tr>
-                            <th className="px-4 py-3 text-left text-sm font-medium">Transaction</th>
-                            <th className="px-4 py-3 text-left text-sm font-medium">From</th>
-                            <th className="px-4 py-3 text-left text-sm font-medium">To</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-white">Transaction</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-white">From</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-white">To</th>
                             <th
-                                className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-muted/70 transition-colors"
+                                className="px-4 py-3 text-left text-sm font-medium text-white cursor-pointer hover:bg-[#191A23]/80 transition-colors"
                                 onClick={() => handleSort('value')}
                             >
                                 Value <SortIndicator field="value"/>
                             </th>
                             <th
-                                className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-muted/70 transition-colors"
+                                className="px-4 py-3 text-left text-sm font-medium text-white cursor-pointer hover:bg-[#191A23]/80 transition-colors"
                                 onClick={() => handleSort('method')}
                             >
                                 Method <SortIndicator field="method"/>
                             </th>
-                            <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-white">Status</th>
                             <th
-                                className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-muted/70 transition-colors"
+                                className="px-4 py-3 text-left text-sm font-medium text-white cursor-pointer hover:bg-[#191A23]/80 transition-colors"
                                 onClick={() => handleSort('timestamp')}
                             >
                                 Time <SortIndicator field="timestamp"/>
                             </th>
-                            <th className="px-4 py-3 text-left text-sm font-medium">Actions</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-white">Actions</th>
                         </tr>
                         </thead>
-                        <tbody className="divide-y">
+                        <tbody className="divide-y divide-[#191A23]">
                         {paginatedTransactions.map((tx) => (
                             <tr key={tx.hash} className="hover:bg-muted/30">
                                 <td className="px-4 py-3">
@@ -270,33 +257,9 @@ export function TransactionTable({
                 </div>
             )}
 
-            {/* Load More for Additional Data */}
-            {hasMore && processedTransactions.length >= currentPage * itemsPerPage && (
-                <div className="flex justify-center">
-                    <Button
-                        onClick={handleLoadMore}
-                        disabled={loadingMore || isLoading}
-                        variant="outline"
-                    >
-                        {loadingMore ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
-                                Loading...
-                            </>
-                        ) : (
-                            <>
-                                <ChevronDown className="mr-2 h-4 w-4"/>
-                                Load More Transactions
-                            </>
-                        )}
-                    </Button>
-                </div>
-            )}
-
             {/* Stats */}
             <div className="text-sm text-muted-foreground text-center">
                 Showing {paginatedTransactions.length} of {processedTransactions.length} transactions
-                {hasMore && ' • Load more to see additional transactions'}
             </div>
         </div>
     )
